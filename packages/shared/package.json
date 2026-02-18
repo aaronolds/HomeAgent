@@ -1,0 +1,19 @@
+{
+	"name": "@homeagent/shared",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"scripts": {
+		"dev": "tsc -w -p tsconfig.json",
+		"build": "tsc -p tsconfig.json",
+		"test": "vitest run"
+	}
+}
