@@ -1,0 +1,40 @@
+{
+  "servers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ]
+    },
+    "microsoft-learn": {
+      "type": "http",
+      "url": "https://learn.microsoft.com/api/mcp"
+    },
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/"
+    },
+    "aspire": {
+      "command": "aspire",
+      "args": [
+        "mcp",
+        "start"
+      ]
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "${input:YOUR_API_KEY}"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "id": "YOUR_API_KEY",
+      "type": "promptString",
+      "description": "Enter your Context7 API Key"
+    }
+  ]
+}
