@@ -51,7 +51,7 @@ Issues within the same wave have no cross-dependencies and can be worked on simu
 
 ### Dependency graph
 
-```
+```text
 #001
  ├─► #002
  │    ├─► #003 ──┬─► #004 ──┬─► #005
