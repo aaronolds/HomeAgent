@@ -14,6 +14,14 @@
 	"scripts": {
 		"dev": "tsc -w -p tsconfig.json",
 		"build": "tsc -p tsconfig.json",
-		"test": "vitest run"
+		"test": "vitest run",
+		"schema:generate": "node ./dist/protocol/scripts/generate-json-schemas.js"
+	},
+	"dependencies": {
+		"zod": "^4.3.6",
+		"zod-to-json-schema": "^3.25.1"
+	},
+	"devDependencies": {
+		"@types/node": "^25.2.3"
 	}
 }
