@@ -1,0 +1,422 @@
+# HomeAgent Security Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│                          HOMEAGENT SECURITY LAYERS                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  LAYER 1: Permission System (Fine-Grained Access Control)                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐            │
+│  │   Tool       │      │  Permission  │      │   Policy     │            │
+│  │  Manifest    │─────▶│   Checker    │◀─────│   Loader     │            │
+│  │              │      │              │      │              │            │
+│  │ • Declares   │      │ • Validates  │      │ • Per-agent  │            │
+│  │   caps       │      │   execution  │      │ • Per-device │            │
+│  │ • Danger     │      │ • Checks     │      │ • Global     │            │
+│  │   level      │      │   policy     │      │ • Hot-reload │            │
+│  │ • Network    │      │ • Logs audit │      │              │            │
+│  │   hosts      │      │              │      │              │            │
+│  └──────────────┘      └──────────────┘      └──────────────┘            │
+│         │                      │                      │                    │
+│         │                      │                      │                    │
+│         └──────────────────────┼──────────────────────┘                    │
+│                                │                                           │
+│                                ▼                                           │
+│                     ┌────────────────────┐                                 │
+│                     │  Tool Executor     │                                 │
+│                     │  ===============   │                                 │
+│                     │  1. Check perms    │                                 │
+│                     │  2. Request        │                                 │
+│                     │     approval?      │                                 │
+│                     │  3. Select sandbox │                                 │
+│                     │  4. Execute        │                                 │
+│                     │  5. Monitor        │                                 │
+│                     │  6. Audit log      │                                 │
+│                     └────────────────────┘                                 │
+│                                │                                           │
+└────────────────────────────────┼───────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  LAYER 2: Container Isolation (Defense-in-Depth)                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────┐    │
+│  │                      Docker Container                             │    │
+│  │  ┌────────────────────────────────────────────────────────────┐  │    │
+│  │  │  HomeAgent Process (non-root user:1000)                    │  │    │
+│  │  │                                                             │  │    │
+│  │  │  • Read-only root filesystem                               │  │    │
+│  │  │  • Seccomp profile (syscall filtering)                     │  │    │
+│  │  │  • AppArmor profile (MAC)                                  │  │    │
+│  │  │  • Capabilities dropped (ALL → none)                       │  │    │
+│  │  │  • No new privileges                                       │  │    │
+│  │  │  • Resource limits (2GB RAM, 2 CPU)                        │  │    │
+│  │  │  • Volumes:                                                │  │    │
+│  │  │    - /data (persistent, read-write)                        │  │    │
+│  │  │    - /tmp (tmpfs, 100MB)                                   │  │    │
+│  │  └────────────────────────────────────────────────────────────┘  │    │
+│  │                                                                   │    │
+│  │  Network: Isolated bridge network                                │    │
+│  │  ├─ Ingress: Port 3000 (WebSocket)                               │    │
+│  │  └─ Egress: HTTPS to LLM APIs only (optional: block all)         │    │
+│  │                                                                   │    │
+│  └───────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+└────────────────────────────────┬────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  LAYER 3: Runtime Sandboxing (Process Isolation)                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │  Isolation Level: STRICT (high-risk tools)                          │  │
+│  │  ┌───────────────────────────────────────────────────────────────┐ │  │
+│  │  │  Sandboxed Tool Process                                       │ │  │
+│  │  │                                                                │ │  │
+│  │  │  ┌──────────────────────────────────────────────────────┐    │ │  │
+│  │  │  │  Linux Namespaces:                                   │    │ │  │
+│  │  │  │  • PID: Isolated process tree                        │    │ │  │
+│  │  │  │  • Network: Separate network stack → proxy           │    │ │  │
+│  │  │  │  • Mount: Minimal filesystem view                    │    │ │  │
+│  │  │  │  • IPC: Isolated inter-process communication         │    │ │  │
+│  │  │  │  • UTS: Isolated hostname                            │    │ │  │
+│  │  │  └──────────────────────────────────────────────────────┘    │ │  │
+│  │  │                                                                │ │  │
+│  │  │  ┌──────────────────────────────────────────────────────┐    │ │  │
+│  │  │  │  Cgroups v2 Resource Limits:                         │    │ │  │
+│  │  │  │  • memory.max = 512MB                                │    │ │  │
+│  │  │  │  • cpu.max = 50% of one core                         │    │ │  │
+│  │  │  │  • io.max = 10MB/s                                   │    │ │  │
+│  │  │  │  • Timeout = 30 seconds                              │    │ │  │
+│  │  │  └──────────────────────────────────────────────────────┘    │ │  │
+│  │  │                                                                │ │  │
+│  │  │  ┌──────────────────────────────────────────────────────┐    │ │  │
+│  │  │  │  Seccomp-BPF Filter:                                 │    │ │  │
+│  │  │  │  • Block: ptrace, mount, pivot_root, reboot          │    │ │  │
+│  │  │  │  • Conditional: socket (network cap)                 │    │ │  │
+│  │  │  │  • Conditional: open/openat (filesystem cap)         │    │ │  │
+│  │  │  │  • Allow: read, write, close, exit, etc.             │    │ │  │
+│  │  │  └──────────────────────────────────────────────────────┘    │ │  │
+│  │  │                                                                │ │  │
+│  │  │  ┌──────────────────────────────────────────────────────┐    │ │  │
+│  │  │  │  Filesystem Jail:                                    │    │ │  │
+│  │  │  │  • chroot: /data/.homeagent/agents/X/workspace       │    │ │  │
+│  │  │  │  • Read-only: /lib, /usr/lib (minimal)               │    │ │  │
+│  │  │  │  • Read-write: /tmp (tmpfs, 50MB)                    │    │ │  │
+│  │  │  │  • Path validation: realpath + prefix check          │    │ │  │
+│  │  │  │  • Symlink protection: O_NOFOLLOW                    │    │ │  │
+│  │  │  └──────────────────────────────────────────────────────┘    │ │  │
+│  │  │                                                                │ │  │
+│  │  │  ┌──────────────────────────────────────────────────────┐    │ │  │
+│  │  │  │  Network Proxy:                                      │    │ │  │
+│  │  │  │  • Intercept: HTTP/HTTPS requests                    │    │ │  │
+│  │  │  │  • Check: Against policy allowlist                   │    │ │  │
+│  │  │  │  • Block: Unauthorized hosts                         │    │ │  │
+│  │  │  │  • Rate limit: 100 req/min                           │    │ │  │
+│  │  │  │  • Audit: All requests logged                        │    │ │  │
+│  │  │  └──────────────────────────────────────────────────────┘    │ │  │
+│  │  │                                                                │ │  │
+│  │  └────────────────────────────────────────────────────────────────┘ │  │
+│  └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │  Isolation Level: STANDARD (medium-risk tools)                      │  │
+│  │  • Child process + resource limits                                  │  │
+│  │  • Seccomp filter                                                   │  │
+│  │  • No namespaces                                                    │  │
+│  └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │  Isolation Level: BASIC (low-risk tools)                            │  │
+│  │  • Child process + timeout                                          │  │
+│  │  • No additional restrictions                                       │  │
+│  └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │  Isolation Level: NONE (trusted built-in tools)                     │  │
+│  │  • Runs in main process                                             │  │
+│  │  • Still checked by permission system                               │  │
+│  └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DATA FLOW EXAMPLE                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+User Request: "Run the command: ls -la"
+                      │
+                      ▼
+         ┌────────────────────────┐
+         │  LLM decides to call   │
+         │  tool: run_command     │
+         │  params: {cmd: "ls"}   │
+         └────────────────────────┘
+                      │
+                      ▼
+         ┌────────────────────────────────┐
+         │  Tool Executor                 │
+         │  1. Load tool manifest         │
+         │     → requires: PROCESS_EXEC   │
+         │     → danger: critical         │
+         └────────────────────────────────┘
+                      │
+                      ▼
+         ┌────────────────────────────────┐
+         │  Permission Checker            │
+         │  1. Load agent policy          │
+         │  2. Check PROCESS_EXEC allowed?│
+         │     → denied ✗                 │
+         │  3. Log to audit trail         │
+         │  4. Return: DENIED             │
+         └────────────────────────────────┘
+                      │
+                      ▼
+         ┌────────────────────────────────┐
+         │  Return Error to LLM           │
+         │  "Permission denied:           │
+         │   PROCESS_EXEC capability      │
+         │   not allowed by policy"       │
+         └────────────────────────────────┘
+
+
+Alternative Flow: If permission is in "prompt" mode
+                      │
+                      ▼
+         ┌────────────────────────────────┐
+         │  Approval Manager              │
+         │  1. Queue approval request     │
+         │  2. Emit event to client       │
+         │  3. Wait for user response     │
+         │     (timeout: 5 min)           │
+         └────────────────────────────────┘
+                      │
+                      ▼
+         ┌────────────────────────────────┐
+         │  User Approves                 │
+         │  $ homeagent approve <id>      │
+         │    --allow --always            │
+         └────────────────────────────────┘
+                      │
+                      ▼
+         ┌────────────────────────────────┐
+         │  Sandbox Manager               │
+         │  1. Select isolation: STRICT   │
+         │  2. Spawn child process        │
+         │  3. Apply namespaces           │
+         │  4. Apply cgroups              │
+         │  5. Apply seccomp filter       │
+         │  6. chroot to workspace        │
+         └────────────────────────────────┘
+                      │
+                      ▼
+         ┌────────────────────────────────┐
+         │  Execute Command               │
+         │  • In isolated namespace       │
+         │  • With resource limits        │
+         │  • Monitor for violations      │
+         │  • Capture output              │
+         │  • Kill on timeout             │
+         └────────────────────────────────┘
+                      │
+                      ▼
+         ┌────────────────────────────────┐
+         │  Audit Log Entry               │
+         │  {                             │
+         │    timestamp,                  │
+         │    agent: "myagent",           │
+         │    tool: "run_command",        │
+         │    capability: "PROCESS_EXEC", │
+         │    decision: "allowed",        │
+         │    approval: "user",           │
+         │    exitCode: 0,                │
+         │    duration: 234ms             │
+         │  }                             │
+         └────────────────────────────────┘
+                      │
+                      ▼
+         ┌────────────────────────────────┐
+         │  Return Result to LLM          │
+         │  "Command output:              │
+         │   [file listing...]"           │
+         └────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          POLICY EXAMPLE                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+File: ~/.homeagent/agents/myagent/policy.json
+
+{
+  "version": 1,
+  "mode": "allowlist",
+  
+  "capabilities": {
+    "allowed": [
+      "FILESYSTEM_READ",        ← Can read files in workspace
+      "FILESYSTEM_WRITE"        ← Can write files in workspace
+    ],
+    "denied": [
+      "FILESYSTEM_READ_SYSTEM", ← Cannot read /etc/passwd
+      "FILESYSTEM_WRITE_SYSTEM",← Cannot write /etc
+      "PROCESS_EXEC"            ← Cannot run commands (unless prompted)
+    ],
+    "prompt": [
+      "NETWORK_OUTBOUND"        ← Will ask user before HTTP requests
+    ]
+  },
+  
+  "tools": {
+    "allowed": [
+      "read_file",
+      "write_file",
+      "list_directory"
+    ],
+    "denied": [
+      "run_command",            ← Explicitly blocked
+      "run_script"
+    ],
+    "prompt": [
+      "http_request"            ← Requires user approval
+    ]
+  },
+  
+  "networkPolicy": {
+    "mode": "allowlist",
+    "allowedHosts": [
+      "api.openai.com",         ← Can call OpenAI
+      "*.github.com"            ← Can call any GitHub subdomain
+    ],
+    "deniedHosts": [
+      "192.168.*"               ← Cannot access local network
+    ]
+  },
+  
+  "filesystemPolicy": {
+    "mode": "workspace-only",   ← Restricted to agent workspace
+    "allowedPaths": [],         ← No exceptions
+    "deniedPaths": [
+      "/etc/",
+      "/root/"
+    ]
+  },
+  
+  "executionPolicy": {
+    "allowShell": false,        ← No shell access
+    "allowedCommands": [],      ← No commands allowed
+    "deniedCommands": ["*"],    ← All commands denied
+    "maxExecutionTime": 30,     ← 30 second timeout
+    "maxConcurrent": 3          ← Max 3 tools at once
+  },
+  
+  "resourceLimits": {
+    "maxMemoryMB": 512,         ← 512MB per tool
+    "maxCPUPercent": 50,        ← 50% of one core
+    "maxFileSize": 10485760,    ← 10MB max file
+    "maxNetworkBytesPerMin": 10485760  ← 10MB/min network
+  },
+  
+  "auditPolicy": {
+    "logLevel": "verbose",      ← Log everything
+    "logSensitiveData": false   ← Redact sensitive data
+  }
+}
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        DEPLOYMENT ARCHITECTURES                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────┐
+│  Option 1: Docker Compose (Simple)   │
+└──────────────────────────────────────┘
+
+Host Machine
+├── Docker Engine
+    └── HomeAgent Container
+        ├── Gateway (port 3000)
+        ├── Runtime + Tools
+        └── Volume: /data/.homeagent
+
+
+┌──────────────────────────────────────┐
+│  Option 2: Kubernetes (Production)   │
+└──────────────────────────────────────┘
+
+Kubernetes Cluster
+├── Namespace: homeagent
+    ├── Deployment: homeagent (1 replica)
+    │   └── Pod
+    │       ├── Container: homeagent
+    │       │   ├── SecurityContext: non-root
+    │       │   ├── ReadOnlyRootFilesystem: true
+    │       │   └── Resources: 512Mi-2Gi RAM, 0.5-2 CPU
+    │       └── Volumes
+    │           ├── PVC: homeagent-data (10Gi)
+    │           └── EmptyDir: tmp (100Mi)
+    ├── Service: homeagent (LoadBalancer)
+    │   └── Port 3000 → Pod:3000
+    ├── NetworkPolicy: homeagent-netpol
+    │   ├── Ingress: from ingress-nginx only
+    │   └── Egress: to DNS + HTTPS (443) only
+    └── PodSecurityPolicy: homeagent-psp
+        ├── RunAsNonRoot: true
+        ├── AllowPrivilegeEscalation: false
+        └── Capabilities: drop ALL
+
+
+┌──────────────────────────────────────┐
+│  Option 3: Bare Metal (Advanced)     │
+└──────────────────────────────────────┘
+
+Linux Host (Hardened)
+├── systemd service: homeagent.service
+│   ├── User: homeagent (non-root)
+│   ├── Capabilities: none
+│   └── SystemCallFilter: @system-service
+├── AppArmor profile: homeagent
+│   ├── Network: outbound HTTPS only
+│   └── Filesystem: /opt/homeagent + /var/lib/homeagent
+└── Manual sandboxing via:
+    ├── unshare (namespaces)
+    ├── cgcreate (cgroups)
+    └── seccomp-filter (syscalls)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              KEY BENEFITS                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+✓ Defense-in-Depth: 3 layers of security
+  └─ Even if one layer fails, others protect
+
+✓ Least Privilege: Tools only get what they need
+  └─ Default deny, explicit allow
+
+✓ Transparency: All decisions logged
+  └─ Full audit trail for forensics
+
+✓ Flexibility: Multiple deployment options
+  └─ Docker, Kubernetes, bare metal
+
+✓ Usability: Easy policy management
+  └─ CLI commands, example policies, prompts
+
+✓ Performance: <1ms overhead for checks
+  └─ Cached policies, optimized validators
+
+✓ Platform Support: Full on Linux, graceful degradation elsewhere
+  └─ Best on Linux, still secure on macOS/Windows
+
+✓ Future-Proof: Extensible architecture
+  └─ Ready for plugin signing, external sandboxes, compliance
+```
