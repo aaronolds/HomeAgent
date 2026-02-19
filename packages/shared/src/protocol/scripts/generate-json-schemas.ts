@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { generateJsonSchemas } from "../json-schema.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const outDir = resolve(__dirname, "..", "generated");
+const packageRoot = resolve(__dirname, "../../..");
+const outDir = resolve(packageRoot, "src/protocol/generated");
 
 mkdirSync(outDir, { recursive: true });
 
