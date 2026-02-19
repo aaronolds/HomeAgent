@@ -1,0 +1,36 @@
+services:
+  homeagent:
+    build: .
+    image: homeagent:latest
+    restart: unless-stopped
+    ports:
+      # Binds to localhost only by default; change to "0.0.0.0:3000:3000" if
+      # the gateway needs to be reachable from other devices on the network.
+      - "127.0.0.1:3000:3000"
+    volumes:
+      # Persist agent data, secrets, and audit log outside the container
+      - homeagent-data:/home/homeagent/.homeagent:rw
+      # Temporary filesystem (required for Node.js)
+    tmpfs:
+      - /tmp:noexec,nosuid,size=128m
+    environment:
+      NODE_ENV: production
+    # ── Hardened security defaults ────────────────────────────────────────────
+    security_opt:
+      # Prevent privilege escalation via setuid / setgid binaries
+      - no-new-privileges:true
+    read_only: true
+    cap_drop:
+      - ALL
+    # ── Resource limits ───────────────────────────────────────────────────────
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+volumes:
+  homeagent-data:
