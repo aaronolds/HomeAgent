@@ -37,7 +37,7 @@ Issues within the same wave have no cross-dependencies and can be worked on simu
 **Critical path:** #001 → #002 → #003 → #004 → #006 → #007 → #008 → #010 → #011 → #018
 
 | Wave | Issues | Dependencies |
-|------|--------|--------------|
+| ------ | -------- | -------------- |
 | **1** | #001 Monorepo scaffold & tooling | — |
 | **2** | #002 Protocol schemas & contracts | #001 |
 | **3** | #003 Gateway TLS/auth, #016 Config package defaults | #001, #002 |
