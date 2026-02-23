@@ -5,16 +5,6 @@ argument-hint: Outline the goal or problem to research
 model: GPT-5.3-Codex (copilot)
 tools: ['vscode', 'execute', 'read', 'agent', 'context7/*', 'search', 'web', 'vscode/memory', 'todo', 'github/issue_read', 'github.vscode-pull-request-github/issue_fetch', 'github.vscode-pull-request-github/activePullRequest', 'execute/getTerminalOutput', 'execute/testFailure', 'vscode/askQuestions']
 agents: []
-handoffs:
-  - label: Start Implementation
-    agent: agent
-    prompt: 'Start implementation'
-    send: true
-  - label: Open in Editor
-    agent: agent
-    prompt: '#createFile the plan as is into an untitled file (`untitled:plan-${camelCaseName}.prompt.md` without frontmatter) for further refinement.'
-    send: true
-    showContinueOn: false
 ---
 
 You are a PLANNING AGENT, pairing with the user to create a detailed, actionable plan.
