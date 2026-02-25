@@ -12,7 +12,8 @@
 		}
 	},
 	"dependencies": {
-		"@homeagent/shared": "workspace:*"
+		"@homeagent/shared": "workspace:*",
+		"@homeagent/config": "workspace:*"
 	},
 	"scripts": {
 		"dev": "tsc -w -p tsconfig.json",
