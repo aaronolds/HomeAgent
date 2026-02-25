@@ -3,6 +3,7 @@ import type { ConfigIssue } from "./errors.js";
 import { ConfigValidationError } from "./errors.js";
 import type { HomeAgentConfig } from "./schema.js";
 import { HomeAgentConfigSchema } from "./schema.js";
+import { deepFreeze } from "./utils.js";
 
 function toConfigPath(
 	path: readonly PropertyKey[],
@@ -64,5 +65,5 @@ export function createConfig(
 	overrides: unknown = {},
 ): Readonly<HomeAgentConfig> {
 	const config = parseConfig(overrides);
-	return Object.freeze(config);
+	return deepFreeze(config);
 }
