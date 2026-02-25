@@ -47,10 +47,6 @@ describe("handshake schemas", () => {
 		delete (missingDeviceId as { deviceId?: string }).deviceId;
 		expect(ConnectSchema.safeParse(missingDeviceId).success).toBe(false);
 
-		const missingAuthToken = { ...base } as Omit<typeof base, "authToken">;
-		delete (missingAuthToken as { authToken?: string }).authToken;
-		expect(ConnectSchema.safeParse(missingAuthToken).success).toBe(false);
-
 		const missingNonce = { ...base } as Omit<typeof base, "nonce">;
 		delete (missingNonce as { nonce?: string }).nonce;
 		expect(ConnectSchema.safeParse(missingNonce).success).toBe(false);
@@ -79,6 +75,15 @@ describe("handshake schemas", () => {
 		const parsed = ConnectSchema.parse(input);
 		expect(parsed.agentId).toBe("agent-001");
 		expect(parsed.capabilities).toEqual(["exec", "stream"]);
+
+		const withoutAuthToken = {
+			role: "node",
+			deviceId: "device-123",
+			nonce: "nonce-xyz",
+			timestamp: Date.now(),
+			signature: "hmac-signature",
+		};
+		expect(ConnectSchema.safeParse(withoutAuthToken).success).toBe(true);
 	});
 
 	it("ConnectOkSchema accepts valid payloads", () => {

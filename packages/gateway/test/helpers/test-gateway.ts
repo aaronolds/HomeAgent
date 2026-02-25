@@ -236,9 +236,18 @@ export async function waitForSocketMessage<T = unknown>(
 		const onMessage = (raw: WebSocket.RawData) => {
 			cleanup();
 			try {
-				const text = Buffer.isBuffer(raw)
-					? raw.toString("utf8")
-					: raw.toString();
+				let text: string;
+				if (typeof raw === "string") {
+					text = raw;
+				} else if (Buffer.isBuffer(raw)) {
+					text = raw.toString("utf8");
+				} else if (Array.isArray(raw)) {
+					text = Buffer.concat(raw).toString("utf8");
+				} else if (raw instanceof ArrayBuffer) {
+					text = Buffer.from(raw).toString("utf8");
+				} else {
+					text = String(raw);
+				}
 				resolve(JSON.parse(text) as T);
 			} catch (error: unknown) {
 				reject(error);
