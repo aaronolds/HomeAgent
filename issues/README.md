@@ -11,9 +11,9 @@ Generated from `docs/plan.combined.md`.
 
 ## Backlog order
 
-1. `001-monorepo-scaffold-and-tooling.md`
-2. `002-shared-protocol-schemas-and-contracts.md`
-3. `003-gateway-tls-auth-handshake-and-session-token.md`
+[*] 1. `001-monorepo-scaffold-and-tooling.md`
+[*] 2. `002-shared-protocol-schemas-and-contracts.md`
+[*] 3. `003-gateway-tls-auth-handshake-and-session-token.md`
 4. `004-gateway-rbac-rpc-router-and-idempotency.md`
 5. `005-gateway-network-hardening-rate-limits-and-frame-limits.md`
 6. `006-persistence-jsonl-sqlite-secrets-and-audit-log.md`
@@ -26,7 +26,7 @@ Generated from `docs/plan.combined.md`.
 13. `013-node-host-secure-connect-capabilities-and-browser-proxy.md`
 14. `014-node-exec-approval-allowlist-and-command-safety.md`
 15. `015-cli-onboarding-and-operator-workflows.md`
-16. `016-config-package-defaults-and-json-schema.md`
+[*] 16. `016-config-package-defaults-and-json-schema.md`
 17. `017-test-suite-protocol-runtime-persistence-and-e2e.md`
 18. `018-security-test-suite-authz-sandboxing-and-incident-controls.md`
 

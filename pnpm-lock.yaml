@@ -20,10 +20,21 @@ importers:
 
   packages/cli: {}
 
-  packages/config: {}
+  packages/config:
+    dependencies:
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      '@types/node':
+        specifier: ^25.2.3
+        version: 25.2.3
 
   packages/gateway:
     dependencies:
+      '@homeagent/config':
+        specifier: workspace:*
+        version: link:../config
       '@fastify/websocket':
         specifier: ^11.2.0
         version: 11.2.0
@@ -54,15 +65,35 @@ importers:
 
   packages/plugins: {}
 
-  packages/providers/discord: {}
+  packages/providers/discord:
+    dependencies:
+      '@homeagent/config':
+        specifier: workspace:*
+        version: link:../../config
 
-  packages/providers/slack: {}
+  packages/providers/slack:
+    dependencies:
+      '@homeagent/config':
+        specifier: workspace:*
+        version: link:../../config
 
-  packages/providers/telegram: {}
+  packages/providers/telegram:
+    dependencies:
+      '@homeagent/config':
+        specifier: workspace:*
+        version: link:../../config
 
-  packages/providers/whatsapp: {}
+  packages/providers/whatsapp:
+    dependencies:
+      '@homeagent/config':
+        specifier: workspace:*
+        version: link:../../config
 
-  packages/runtime: {}
+  packages/runtime:
+    dependencies:
+      '@homeagent/config':
+        specifier: workspace:*
+        version: link:../config
 
   packages/shared:
     dependencies:
