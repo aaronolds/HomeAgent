@@ -11,9 +11,9 @@ Generated from `docs/plan.combined.md`.
 
 ## Backlog order
 
-[*} 1. `001-monorepo-scaffold-and-tooling.md`
-[*} 2. `002-shared-protocol-schemas-and-contracts.md`
-[*} 3. `003-gateway-tls-auth-handshake-and-session-token.md`
+[*] 1. `001-monorepo-scaffold-and-tooling.md`
+[*] 2. `002-shared-protocol-schemas-and-contracts.md`
+[*] 3. `003-gateway-tls-auth-handshake-and-session-token.md`
 4. `004-gateway-rbac-rpc-router-and-idempotency.md`
 5. `005-gateway-network-hardening-rate-limits-and-frame-limits.md`
 6. `006-persistence-jsonl-sqlite-secrets-and-audit-log.md`
