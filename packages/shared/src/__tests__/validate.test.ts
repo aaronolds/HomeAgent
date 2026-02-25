@@ -83,6 +83,8 @@ describe("validate helpers", () => {
 				deviceId: "device-1",
 				authToken: "token",
 				nonce: "nonce",
+				timestamp: Date.now(),
+				signature: "hmac-signature",
 			},
 			"connect",
 		);

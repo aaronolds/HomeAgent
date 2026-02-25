@@ -24,11 +24,19 @@ export {
 	IdempotencyKeyError,
 	ProtocolValidationError,
 } from "./errors.js";
-export type { Connect, ConnectOk, ProtocolError } from "./handshake.js";
+export type {
+	Connect,
+	ConnectOk,
+	HeartbeatAck,
+	HeartbeatRequest,
+	ProtocolError,
+} from "./handshake.js";
 // Handshake
 export {
 	ConnectOkSchema,
 	ConnectSchema,
+	HeartbeatAckSchema,
+	HeartbeatRequestSchema,
 	ProtocolErrorSchema,
 } from "./handshake.js";
 // Idempotency
