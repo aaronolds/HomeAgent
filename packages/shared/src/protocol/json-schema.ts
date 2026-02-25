@@ -8,6 +8,8 @@ import {
 import {
 	ConnectOkSchema,
 	ConnectSchema,
+	HeartbeatAckSchema,
+	HeartbeatRequestSchema,
 	ProtocolErrorSchema,
 } from "./handshake.js";
 import { MethodSchemas } from "./methods.js";
@@ -37,6 +39,14 @@ export function generateJsonSchemas(): JsonSchemaCollection {
 	// Handshake
 	schemas["handshake.connect"] = convert(ConnectSchema, "Connect");
 	schemas["handshake.connect_ok"] = convert(ConnectOkSchema, "ConnectOk");
+	schemas["handshake.heartbeat"] = convert(
+		HeartbeatRequestSchema,
+		"HeartbeatRequest",
+	);
+	schemas["handshake.heartbeat_ack"] = convert(
+		HeartbeatAckSchema,
+		"HeartbeatAck",
+	);
 	schemas["handshake.error"] = convert(ProtocolErrorSchema, "ProtocolError");
 
 	// Envelopes
