@@ -20,6 +20,8 @@ describe("json schema generation", () => {
 
 		expect(output.schemas).toHaveProperty("handshake.connect");
 		expect(output.schemas).toHaveProperty("handshake.connect_ok");
+		expect(output.schemas).toHaveProperty("handshake.heartbeat");
+		expect(output.schemas).toHaveProperty("handshake.heartbeat_ack");
 		expect(output.schemas).toHaveProperty("handshake.error");
 		expect(output.schemas).toHaveProperty("envelope.request");
 		expect(output.schemas).toHaveProperty("envelope.response");
