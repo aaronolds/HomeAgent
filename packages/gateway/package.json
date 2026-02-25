@@ -16,9 +16,8 @@
 	},
 	"dependencies": {
 		"@homeagent/shared": "workspace:*",
-		"@homeagent/config": "workspace:*"
+		"@homeagent/config": "workspace:*",
 		"@fastify/websocket": "^11.2.0",
-		"@homeagent/shared": "workspace:*",
 		"fastify": "^5.6.1",
 		"jsonwebtoken": "^9.0.2",
 		"selfsigned": "^3.0.1"

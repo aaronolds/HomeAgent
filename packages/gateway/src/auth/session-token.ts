@@ -1,11 +1,8 @@
-import {
-	JsonWebTokenError,
-	sign,
-	TokenExpiredError,
-	verify,
-} from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 import { AuthError } from "./errors.js";
+
+const { sign, verify, JsonWebTokenError, TokenExpiredError } = jwt;
 
 export interface SessionTokenPayload {
 	deviceId: string;
