@@ -1,6 +1,6 @@
 export type DeviceRecord = {
 	deviceId: string;
-	name: string;
+	name?: string;
 	sharedSecret: string;
 	approved: boolean;
 	createdAt: number;

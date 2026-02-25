@@ -7,7 +7,7 @@ import { Identifier, NonEmptyString, RoleSchema, Timestamp } from "./types.js";
 export const ConnectSchema = z.object({
 	role: RoleSchema,
 	deviceId: NonEmptyString,
-	authToken: NonEmptyString,
+	authToken: NonEmptyString.optional(),
 	nonce: NonEmptyString,
 	timestamp: Timestamp,
 	signature: NonEmptyString,

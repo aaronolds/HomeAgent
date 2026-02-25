@@ -39,7 +39,7 @@ export function verifySessionToken(
 	jwtSecret: string,
 ): SessionTokenPayload {
 	try {
-		const decoded = verify(token, jwtSecret);
+		const decoded = verify(token, jwtSecret, { algorithms: ["HS256"] });
 		if (typeof decoded !== "object" || decoded === null) {
 			throw new AuthError("INVALID_TOKEN", "Session token payload is invalid.");
 		}

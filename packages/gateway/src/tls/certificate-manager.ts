@@ -105,6 +105,18 @@ export async function loadOrGenerateCertificate(
 			days: 365,
 			keySize: 2048,
 			algorithm: "sha256",
+			extensions: [
+				{
+					name: "subjectAltName",
+					altNames: [
+						{ type: 2, value: "localhost" },
+						{ type: 7, ip: "127.0.0.1" },
+						...(config.host !== undefined
+							? [{ type: 2 as const, value: config.host }]
+							: []),
+					],
+				},
+			],
 		},
 	);
 
