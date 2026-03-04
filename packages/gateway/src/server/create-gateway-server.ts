@@ -1,10 +1,15 @@
 import { randomBytes } from "node:crypto";
+import { join } from "node:path";
 
 import websocket from "@fastify/websocket";
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { AuditLog } from "../audit/audit-log.js";
 import type { GatewayConfig } from "../config/gateway-config.js";
+import { SqliteIdempotencyStore } from "../idempotency/sqlite-idempotency-store.js";
+import { registerV1Handlers } from "../rpc/method-handlers.js";
+import { MethodRegistry } from "../rpc/method-registry.js";
+import { RpcRouter } from "../rpc/router.js";
 import { DeviceRegistry } from "../state/device-registry.js";
 import { NonceStore } from "../state/nonce-store.js";
 import { buildTlsOptions } from "../tls/tls-options.js";
@@ -17,6 +22,8 @@ export interface GatewayDependencies {
 	nonceStore: NonceStore;
 	auditLog: AuditLog;
 	connectionManager: ConnectionManager;
+	rpcRouter: RpcRouter;
+	idempotencyStore: SqliteIdempotencyStore | null;
 }
 
 export async function createGatewayServer(
@@ -46,6 +53,23 @@ export async function startGateway(
 	const nonceStore = new NonceStore(effectiveConfig.nonceWindowMs);
 	const auditLog = new AuditLog(effectiveConfig.dataDir);
 	const connectionManager = new ConnectionManager();
+	const methodRegistry = new MethodRegistry();
+	registerV1Handlers(methodRegistry, {
+		deviceRegistry,
+		connectionManager,
+		auditLog,
+	});
+
+	const idempotencyStore = new SqliteIdempotencyStore({
+		dbPath:
+			effectiveConfig.sqlitePath ??
+			join(effectiveConfig.dataDir, "homeagent.db"),
+		ttlMs: effectiveConfig.idempotencyTtlMs,
+		cleanupIntervalMs: effectiveConfig.idempotencyCleanupIntervalMs,
+	});
+	idempotencyStore.startCleanupTimer();
+
+	const rpcRouter = new RpcRouter(methodRegistry, idempotencyStore);
 
 	await deviceRegistry.load();
 
@@ -55,6 +79,12 @@ export async function startGateway(
 		nonceStore,
 		auditLog,
 		connectionManager,
+		rpcRouter,
+		idempotencyStore,
+	});
+
+	server.addHook("onClose", async () => {
+		idempotencyStore.close();
 	});
 
 	const address = await server.listen({

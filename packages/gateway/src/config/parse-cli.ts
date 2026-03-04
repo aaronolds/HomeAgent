@@ -96,6 +96,30 @@ function parseArgs(
 				parsed.sessionTokenTtlMs = parseIntegerFlag("--session-ttl", value);
 				break;
 			}
+			case "--idempotency-ttl": {
+				if (value === undefined) {
+					throw new Error("Missing value for --idempotency-ttl");
+				}
+				parsed.idempotencyTtlMs = parseIntegerFlag("--idempotency-ttl", value);
+				break;
+			}
+			case "--idempotency-cleanup-interval": {
+				if (value === undefined) {
+					throw new Error("Missing value for --idempotency-cleanup-interval");
+				}
+				parsed.idempotencyCleanupIntervalMs = parseIntegerFlag(
+					"--idempotency-cleanup-interval",
+					value,
+				);
+				break;
+			}
+			case "--sqlite-path": {
+				if (value === undefined) {
+					throw new Error("Missing value for --sqlite-path");
+				}
+				parsed.sqlitePath = value;
+				break;
+			}
 			default: {
 				throw new Error(`Unknown flag: ${rawFlag}`);
 			}

@@ -7,7 +7,10 @@ export interface GatewayConfig {
 	nonceWindowMs: number;
 	timestampSkewMs: number;
 	sessionTokenTtlMs: number;
+	idempotencyTtlMs: number;
+	idempotencyCleanupIntervalMs: number;
 	dataDir: string;
+	sqlitePath?: string;
 	jwtSecret?: string;
 }
 
@@ -19,6 +22,8 @@ export function createDefaultConfig(): GatewayConfig {
 		nonceWindowMs: 300_000,
 		timestampSkewMs: 30_000,
 		sessionTokenTtlMs: 900_000,
+		idempotencyTtlMs: 86_400_000,
+		idempotencyCleanupIntervalMs: 3_600_000,
 		dataDir: ".homeagent",
 	};
 }
