@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
 	ConfigValidationError,
-	DEFAULT_CONFIG,
 	createConfig,
+	DEFAULT_CONFIG,
 	parseConfig,
 	safeParseConfig,
 } from "../src/index.js";
@@ -26,7 +26,9 @@ describe("parseConfig", () => {
 
 		expect(parsed.security.allowInsecure).toBe(true);
 		expect(parsed.runtime.execution.toolTimeoutMs).toBe(45_000);
-		expect(parsed.security.enforceAuth).toBe(DEFAULT_CONFIG.security.enforceAuth);
+		expect(parsed.security.enforceAuth).toBe(
+			DEFAULT_CONFIG.security.enforceAuth,
+		);
 	});
 
 	it("throws ConfigValidationError for invalid input", () => {
@@ -45,7 +47,10 @@ describe("parseConfig", () => {
 describe("ConfigValidationError", () => {
 	it("formatIssues returns human-readable output", () => {
 		const error = new ConfigValidationError("Invalid configuration", [
-			{ path: ["gateway", "limits", "perIpConnectionsPerMinute"], message: "Expected number" },
+			{
+				path: ["gateway", "limits", "perIpConnectionsPerMinute"],
+				message: "Expected number",
+			},
 			{ path: [], message: "Invalid root object" },
 		]);
 

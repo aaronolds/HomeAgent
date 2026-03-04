@@ -50,12 +50,6 @@ const RUNTIME_DEFAULT = {
 	execution: RUNTIME_EXECUTION_DEFAULT,
 } as const;
 
-const HOME_AGENT_DEFAULT = {
-	gateway: GATEWAY_DEFAULT,
-	runtime: RUNTIME_DEFAULT,
-	security: SECURITY_DEFAULT,
-} as const;
-
 // --- Gateway Rate Limits ---
 export const GatewayRateLimitsSchema = z.object({
 	/** Max connections per IP per minute */
