@@ -12,6 +12,19 @@ export interface GatewayConfig {
 	dataDir: string;
 	sqlitePath?: string;
 	jwtSecret?: string;
+	rateLimits: {
+		perIpConnectionsPerMinute: number;
+		perDeviceRpcPerMinute: number;
+		perDeviceAgentRunPerMinute: number;
+	};
+	frameLimits: {
+		maxFrameBytes: number;
+	};
+	network: {
+		originAllowlist: string[];
+		strictOrigin: boolean;
+		strictCors: boolean;
+	};
 }
 
 export function createDefaultConfig(): GatewayConfig {
@@ -25,5 +38,18 @@ export function createDefaultConfig(): GatewayConfig {
 		idempotencyTtlMs: 86_400_000,
 		idempotencyCleanupIntervalMs: 3_600_000,
 		dataDir: ".homeagent",
+		rateLimits: {
+			perIpConnectionsPerMinute: 10,
+			perDeviceRpcPerMinute: 60,
+			perDeviceAgentRunPerMinute: 10,
+		},
+		frameLimits: {
+			maxFrameBytes: 1_048_576,
+		},
+		network: {
+			originAllowlist: [],
+			strictOrigin: true,
+			strictCors: true,
+		},
 	};
 }

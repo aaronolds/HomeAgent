@@ -13,6 +13,8 @@ export const RPC_ERROR_CODES = {
 	MISSING_IDEMPOTENCY_KEY: -32002,
 	DUPLICATE_REQUEST: -32003,
 	DEVICE_REVOKED: -32004,
+	RATE_LIMITED: -32005,
+	FRAME_TOO_LARGE: -32006,
 } as const;
 
 export type RpcErrorCode =
@@ -98,5 +100,18 @@ export function deviceRevoked(deviceId: string): RpcError {
 		`Device revoked: ${deviceId}`,
 		false,
 		{ deviceId },
+	);
+}
+
+export function rateLimited(message = "Rate limit exceeded"): RpcError {
+	return new RpcError(RPC_ERROR_CODES.RATE_LIMITED, message, true);
+}
+
+export function frameTooLarge(size: number, maxSize: number): RpcError {
+	return new RpcError(
+		RPC_ERROR_CODES.FRAME_TOO_LARGE,
+		`Frame size ${size} exceeds maximum ${maxSize}`,
+		false,
+		{ size, maxSize },
 	);
 }

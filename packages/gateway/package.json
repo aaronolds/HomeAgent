@@ -17,6 +17,7 @@
 	"dependencies": {
 		"@homeagent/shared": "workspace:*",
 		"@homeagent/config": "workspace:*",
+		"@fastify/cors": "^11.0.0",
 		"@fastify/websocket": "^11.2.0",
 		"fastify": "^5.6.1",
 		"jsonwebtoken": "^9.0.2",

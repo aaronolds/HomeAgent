@@ -8,10 +8,26 @@ function parseIntegerFlag(flagName: string, value: string): number {
 	return parsed;
 }
 
-function parseArgs(
-	args: string[],
-): Partial<GatewayConfig> & { portProvided?: boolean } {
+interface ParsedArgs {
+	config: Partial<GatewayConfig> & { portProvided?: boolean };
+	originAllowlist?: string[] | undefined;
+	strictOrigin?: boolean | undefined;
+	strictCors?: boolean | undefined;
+	maxFrameBytes?: number | undefined;
+	perIpConnectionsPerMinute?: number | undefined;
+	perDeviceRpcPerMinute?: number | undefined;
+	perDeviceAgentRunPerMinute?: number | undefined;
+}
+
+function parseArgs(args: string[]): ParsedArgs {
 	const parsed: Partial<GatewayConfig> & { portProvided?: boolean } = {};
+	let originAllowlist: string[] | undefined;
+	let strictOrigin: boolean | undefined;
+	let strictCors: boolean | undefined;
+	let maxFrameBytes: number | undefined;
+	let perIpConnectionsPerMinute: number | undefined;
+	let perDeviceRpcPerMinute: number | undefined;
+	let perDeviceAgentRunPerMinute: number | undefined;
 
 	for (let i = 0; i < args.length; i += 1) {
 		const current = args[i];
@@ -24,7 +40,8 @@ function parseArgs(
 		}
 
 		const [rawFlag, inlineValue] = current.split("=", 2);
-		const needsValue = rawFlag !== "--insecure";
+		const booleanFlags = new Set(["--insecure", "--no-strict-origin", "--no-strict-cors"]);
+		const needsValue = !booleanFlags.has(rawFlag!);
 		let value = inlineValue;
 		if (needsValue && value === undefined) {
 			const next = args[i + 1];
@@ -120,20 +137,87 @@ function parseArgs(
 				parsed.sqlitePath = value;
 				break;
 			}
+			case "--origin-allowlist": {
+				if (value === undefined) {
+					throw new Error("Missing value for --origin-allowlist");
+				}
+				originAllowlist = value
+					.split(",")
+					.map((s) => s.trim())
+					.filter((s) => s.length > 0);
+				break;
+			}
+			case "--no-strict-origin": {
+				strictOrigin = false;
+				break;
+			}
+			case "--no-strict-cors": {
+				strictCors = false;
+				break;
+			}
+			case "--max-frame-bytes": {
+				if (value === undefined) {
+					throw new Error("Missing value for --max-frame-bytes");
+				}
+				maxFrameBytes = parseIntegerFlag("--max-frame-bytes", value);
+				break;
+			}
+			case "--rate-limit-ip": {
+				if (value === undefined) {
+					throw new Error("Missing value for --rate-limit-ip");
+				}
+				perIpConnectionsPerMinute = parseIntegerFlag("--rate-limit-ip", value);
+				break;
+			}
+			case "--rate-limit-rpc": {
+				if (value === undefined) {
+					throw new Error("Missing value for --rate-limit-rpc");
+				}
+				perDeviceRpcPerMinute = parseIntegerFlag("--rate-limit-rpc", value);
+				break;
+			}
+			case "--rate-limit-agent-run": {
+				if (value === undefined) {
+					throw new Error("Missing value for --rate-limit-agent-run");
+				}
+				perDeviceAgentRunPerMinute = parseIntegerFlag(
+					"--rate-limit-agent-run",
+					value,
+				);
+				break;
+			}
 			default: {
 				throw new Error(`Unknown flag: ${rawFlag}`);
 			}
 		}
 	}
 
-	return parsed;
+	return {
+		config: parsed,
+		originAllowlist,
+		strictOrigin,
+		strictCors,
+		maxFrameBytes,
+		perIpConnectionsPerMinute,
+		perDeviceRpcPerMinute,
+		perDeviceAgentRunPerMinute,
+	};
 }
 
 export function parseCli(
 	argv: string[] = process.argv.slice(2),
 ): GatewayConfig {
 	const defaults = createDefaultConfig();
-	const parsed = parseArgs(argv);
+	const {
+		config: parsed,
+		originAllowlist,
+		strictOrigin,
+		strictCors,
+		maxFrameBytes,
+		perIpConnectionsPerMinute,
+		perDeviceRpcPerMinute,
+		perDeviceAgentRunPerMinute,
+	} = parseArgs(argv);
 
 	if ((parsed.certPath !== undefined) !== (parsed.keyPath !== undefined)) {
 		throw new Error("--cert and --key must be provided together");
@@ -142,6 +226,26 @@ export function parseCli(
 	const merged: GatewayConfig = {
 		...defaults,
 		...parsed,
+		rateLimits: {
+			...defaults.rateLimits,
+			...(perIpConnectionsPerMinute !== undefined && {
+				perIpConnectionsPerMinute,
+			}),
+			...(perDeviceRpcPerMinute !== undefined && { perDeviceRpcPerMinute }),
+			...(perDeviceAgentRunPerMinute !== undefined && {
+				perDeviceAgentRunPerMinute,
+			}),
+		},
+		frameLimits: {
+			...defaults.frameLimits,
+			...(maxFrameBytes !== undefined && { maxFrameBytes }),
+		},
+		network: {
+			...defaults.network,
+			...(originAllowlist !== undefined && { originAllowlist }),
+			...(strictOrigin !== undefined && { strictOrigin }),
+			...(strictCors !== undefined && { strictCors }),
+		},
 	};
 
 	if (parsed.insecure === true && parsed.portProvided !== true) {

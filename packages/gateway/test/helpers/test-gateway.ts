@@ -12,6 +12,7 @@ import type { GatewayConfig } from "../../src/config/gateway-config.js";
 import { SqliteIdempotencyStore } from "../../src/idempotency/sqlite-idempotency-store.js";
 import { registerV1Handlers } from "../../src/rpc/method-handlers.js";
 import { MethodRegistry } from "../../src/rpc/method-registry.js";
+import { SlidingWindowRateLimiter } from "../../src/network/rate-limiter.js";
 import { RpcRouter } from "../../src/rpc/router.js";
 import { ConnectionManager } from "../../src/server/connection-context.js";
 import { createGatewayServer } from "../../src/server/create-gateway-server.js";
@@ -92,6 +93,19 @@ export async function createTestGateway(
 		idempotencyCleanupIntervalMs: 3_600_000,
 		dataDir,
 		jwtSecret: "gateway-test-jwt-secret",
+		rateLimits: {
+			perIpConnectionsPerMinute: 100,
+			perDeviceRpcPerMinute: 100,
+			perDeviceAgentRunPerMinute: 100,
+		},
+		frameLimits: {
+			maxFrameBytes: 1_048_576,
+		},
+		network: {
+			originAllowlist: [],
+			strictOrigin: false,
+			strictCors: false,
+		},
 		...options.configOverrides,
 	};
 
@@ -139,7 +153,25 @@ export async function createTestGateway(
 	});
 	idempotencyStore.startCleanupTimer();
 
-	const rpcRouter = new RpcRouter(methodRegistry, idempotencyStore);
+	const ipRateLimiter = new SlidingWindowRateLimiter(
+		60_000,
+		config.rateLimits.perIpConnectionsPerMinute,
+	);
+	const deviceRpcLimiter = new SlidingWindowRateLimiter(
+		60_000,
+		config.rateLimits.perDeviceRpcPerMinute,
+	);
+	const agentRunLimiter = new SlidingWindowRateLimiter(
+		60_000,
+		config.rateLimits.perDeviceAgentRunPerMinute,
+	);
+
+	const rpcRouter = new RpcRouter(
+		methodRegistry,
+		idempotencyStore,
+		deviceRpcLimiter,
+		agentRunLimiter,
+	);
 
 	const server = await createGatewayServer({
 		config,
@@ -149,6 +181,7 @@ export async function createTestGateway(
 		connectionManager,
 		rpcRouter,
 		idempotencyStore,
+		ipRateLimiter,
 	});
 
 	const address = await server.listen({ host: config.host, port: config.port });

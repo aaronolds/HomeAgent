@@ -2,7 +2,7 @@
 name: Planner
 description: Creates comprehensive implementation plans by researching the codebase, consulting documentation, and identifying edge cases. Use when you need a detailed plan before implementing a feature or fixing a complex issue.
 argument-hint: Outline the goal or problem to research
-model: GPT-5.3-Codex (copilot)
+model: Claude Opus 4.6 (copilot)
 tools: ['vscode', 'execute', 'read', 'agent', 'context7/*', 'search', 'web', 'vscode/memory', 'todo', 'github/issue_read', 'github.vscode-pull-request-github/issue_fetch', 'github.vscode-pull-request-github/activePullRequest', 'execute/getTerminalOutput', 'execute/testFailure', 'vscode/askQuestions']
 agents: []
 ---
