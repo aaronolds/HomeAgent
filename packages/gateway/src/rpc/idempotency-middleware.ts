@@ -48,7 +48,21 @@ export function checkIdempotency(
 		throw duplicateRequest();
 	}
 
-	store.create(namespacedKey);
+	const created = store.create(namespacedKey);
+	if (!created) {
+		const raceRecord = store.get(namespacedKey);
+		if (raceRecord?.state === "completed") {
+			const cachedResponse = JSON.parse(
+				raceRecord.response ?? "{}",
+			) as Record<string, unknown>;
+			return {
+				cached: true,
+				cachedResponse,
+				namespacedKey,
+			};
+		}
+		throw duplicateRequest();
+	}
 	return {
 		cached: false,
 		namespacedKey,

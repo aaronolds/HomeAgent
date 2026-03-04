@@ -12,9 +12,9 @@ import type { SqliteIdempotencyStore } from "../idempotency/sqlite-idempotency-s
 import {
 	forbidden,
 	internalError,
+	invalidRequest,
 	methodNotFound,
 	missingIdempotencyKey,
-	parseError,
 	RpcError,
 } from "./errors.js";
 import {
@@ -57,7 +57,7 @@ export class RpcRouter {
 			}
 
 			if (error instanceof ProtocolValidationError) {
-				return this.buildErrorResponse("unknown", parseError(error.message));
+				return this.buildErrorResponse("unknown", invalidRequest(error.message));
 			}
 
 			return this.buildErrorResponse("unknown", internalError());

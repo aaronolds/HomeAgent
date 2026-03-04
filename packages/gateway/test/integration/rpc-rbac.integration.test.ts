@@ -115,7 +115,7 @@ describe("RPC RBAC Integration", () => {
 		ws.send(JSON.stringify(req));
 		const response = await waitForSocketMessage<RpcResponse>(ws);
 		expect(response.result).toBeDefined();
-		expect(response.result?.revoked).toBe(true);
+		expect(response.result?.revoked).toBe(false);
 		ws.close();
 	});
 

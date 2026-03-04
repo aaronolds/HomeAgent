@@ -39,6 +39,7 @@ const PROTOCOL_ERROR_CODES: Record<AuthErrorCode, number> = {
 	UNKNOWN_DEVICE: 4005,
 	INVALID_TOKEN: 4006,
 	EXPIRED_TOKEN: 4007,
+	REVOKED_DEVICE: 4008,
 };
 
 function sendJson(socket: WebSocket, payload: unknown): void {
@@ -244,6 +245,14 @@ async function processHandshake(
 			);
 		}
 
+		if (device.revoked === true) {
+			throw new AuthError(
+				"REVOKED_DEVICE",
+				"Device has been revoked.",
+				message.deviceId,
+			);
+		}
+
 		if (
 			!verifyHmac(
 				message.signature,
@@ -286,7 +295,7 @@ async function processHandshake(
 		const sessionToken = issueSessionToken({
 			deviceId: message.deviceId,
 			connectionId,
-			role: message.role,
+			role: device.role,
 			jwtSecret,
 			ttlMs: deps.config.sessionTokenTtlMs,
 		});
@@ -294,7 +303,7 @@ async function processHandshake(
 		deps.connectionManager.add({
 			connectionId,
 			deviceId: message.deviceId,
-			role: message.role,
+			role: device.role,
 			sessionToken,
 			connectedAt,
 		});
@@ -312,7 +321,7 @@ async function processHandshake(
 		const connectionCtx: ConnectionContext = {
 			connectionId,
 			deviceId: message.deviceId,
-			role: message.role,
+			role: device.role,
 			sessionToken,
 			connectedAt,
 		};

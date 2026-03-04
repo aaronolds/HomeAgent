@@ -201,6 +201,40 @@ describe("gateway websocket connect auth", () => {
 		}
 	});
 
+	it("rejects revoked device", async () => {
+		const ctx = await createTestGateway();
+		await ctx.deviceRegistry.revokeDevice(ctx.testDevice.deviceId);
+		const socket = createClient(ctx.wsUrl);
+
+		try {
+			await waitForSocketOpen(socket);
+
+			const errorPromise =
+				waitForSocketMessage<Record<string, unknown>>(socket);
+			socket.send(
+				JSON.stringify(
+					createConnectMessage({
+						deviceId: ctx.testDevice.deviceId,
+						sharedSecret: ctx.testDevice.sharedSecret,
+						role: ctx.testDevice.role,
+						authToken: ctx.testDevice.authToken,
+					}),
+				),
+			);
+
+			const error = await errorPromise;
+			expect(error.code).toBe(4008);
+			expect(error.message).toBe("Device has been revoked.");
+			expect(error.retryable).toBe(false);
+
+			const close = await waitForSocketClose(socket);
+			expect(close.code).toBe(1008);
+			expect(close.reason).toBe("REVOKED_DEVICE");
+		} finally {
+			await cleanupTestGateway(ctx);
+		}
+	});
+
 	it("rejects unknown device", async () => {
 		const ctx = await createTestGateway();
 		const socket = createClient(ctx.wsUrl);
