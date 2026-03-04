@@ -10,12 +10,16 @@ import type {
 } from "./schema.js";
 
 /** Extract gateway rate limit settings from a config. */
-export function getGatewayRateLimits(config: HomeAgentConfig): GatewayRateLimits {
+export function getGatewayRateLimits(
+	config: HomeAgentConfig,
+): GatewayRateLimits {
 	return config.gateway.limits;
 }
 
 /** Extract gateway frame limit settings from a config. */
-export function getGatewayFrameLimits(config: HomeAgentConfig): GatewayFrameLimits {
+export function getGatewayFrameLimits(
+	config: HomeAgentConfig,
+): GatewayFrameLimits {
 	return config.gateway.frameLimits;
 }
 
@@ -30,7 +34,9 @@ export function getGatewayNetwork(config: HomeAgentConfig): GatewayNetwork {
 }
 
 /** Extract runtime compaction settings from a config. */
-export function getRuntimeCompaction(config: HomeAgentConfig): RuntimeCompaction {
+export function getRuntimeCompaction(
+	config: HomeAgentConfig,
+): RuntimeCompaction {
 	return config.runtime.compaction;
 }
 

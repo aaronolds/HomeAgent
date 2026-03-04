@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-	DEFAULT_CONFIG,
 	createConfig,
+	DEFAULT_CONFIG,
 	getGatewayFrameLimits,
 	getGatewayNetwork,
 	getGatewayRateLimits,
@@ -21,8 +21,12 @@ describe("config accessors", () => {
 		);
 		expect(getGatewaySession(config)).toEqual(DEFAULT_CONFIG.gateway.session);
 		expect(getGatewayNetwork(config)).toEqual(DEFAULT_CONFIG.gateway.network);
-		expect(getRuntimeCompaction(config)).toEqual(DEFAULT_CONFIG.runtime.compaction);
-		expect(getRuntimeExecution(config)).toEqual(DEFAULT_CONFIG.runtime.execution);
+		expect(getRuntimeCompaction(config)).toEqual(
+			DEFAULT_CONFIG.runtime.compaction,
+		);
+		expect(getRuntimeExecution(config)).toEqual(
+			DEFAULT_CONFIG.runtime.execution,
+		);
 		expect(getSecurityToggles(config)).toEqual(DEFAULT_CONFIG.security);
 	});
 

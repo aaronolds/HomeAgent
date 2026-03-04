@@ -1,6 +1,9 @@
+import type { Role } from "@homeagent/shared";
+
 export interface ConnectionContext {
 	connectionId: string;
 	deviceId: string;
+	role: Role;
 	sessionToken: string;
 	connectedAt: number;
 }
@@ -23,6 +26,17 @@ export class ConnectionManager {
 	public getByDeviceId(deviceId: string): ConnectionContext | undefined {
 		for (const context of this.connections.values()) {
 			if (context.deviceId === deviceId) {
+				return context;
+			}
+		}
+
+		return undefined;
+	}
+
+	public removeByDeviceId(deviceId: string): ConnectionContext | undefined {
+		for (const [connectionId, context] of this.connections.entries()) {
+			if (context.deviceId === deviceId) {
+				this.connections.delete(connectionId);
 				return context;
 			}
 		}

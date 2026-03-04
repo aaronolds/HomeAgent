@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
+import { ROLES, type Role } from "@homeagent/shared";
+
 import type { DeviceRecord } from "./types.js";
 
 type FileSystem = Pick<
@@ -11,6 +13,20 @@ type FileSystem = Pick<
 type ErrnoException = Error & {
 	code?: string;
 };
+
+type PersistedDeviceRecord = Omit<DeviceRecord, "role"> & {
+	role?: unknown;
+};
+
+const DEFAULT_ROLE: Role = "client";
+
+function normalizeRole(value: unknown): Role {
+	if (typeof value === "string" && ROLES.includes(value as Role)) {
+		return value as Role;
+	}
+
+	return DEFAULT_ROLE;
+}
 
 export class DeviceRegistry {
 	private readonly devices = new Map<string, DeviceRecord>();
@@ -38,11 +54,14 @@ export class DeviceRegistry {
 
 		try {
 			const raw = await this.fs.readFile(this.devicesPath, "utf8");
-			const parsed = JSON.parse(raw) as DeviceRecord[];
+			const parsed = JSON.parse(raw) as PersistedDeviceRecord[];
 
 			this.devices.clear();
 			for (const record of parsed) {
-				this.devices.set(record.deviceId, record);
+				this.devices.set(record.deviceId, {
+					...record,
+					role: normalizeRole(record.role),
+				});
 			}
 		} catch (error: unknown) {
 			const errnoError = error as ErrnoException;
@@ -110,6 +129,30 @@ export class DeviceRegistry {
 			...existing,
 			approved: true,
 			updatedAt: this.now(),
+		});
+
+		await this.save();
+		return true;
+	}
+
+	public async revokeDevice(
+		deviceId: string,
+		_reason?: string,
+	): Promise<boolean> {
+		await this.load();
+
+		const existing = this.devices.get(deviceId);
+		if (existing === undefined) {
+			return false;
+		}
+
+		const timestamp = this.now();
+
+		this.devices.set(deviceId, {
+			...existing,
+			revoked: true,
+			revokedAt: timestamp,
+			updatedAt: timestamp,
 		});
 
 		await this.save();

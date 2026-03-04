@@ -1,8 +1,13 @@
+import type { Role } from "@homeagent/shared";
+
 export type DeviceRecord = {
 	deviceId: string;
 	name?: string;
 	sharedSecret: string;
+	role: Role;
 	approved: boolean;
+	revoked?: boolean;
+	revokedAt?: number;
 	createdAt: number;
 	updatedAt: number;
 };

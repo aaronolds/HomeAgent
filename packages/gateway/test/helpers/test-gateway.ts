@@ -3,11 +3,16 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { Role } from "@homeagent/shared";
 import type { FastifyInstance } from "fastify";
 import WebSocket from "ws";
 import { AuditLog } from "../../src/audit/audit-log.js";
 import { computeHmac } from "../../src/auth/hmac-auth.js";
 import type { GatewayConfig } from "../../src/config/gateway-config.js";
+import { SqliteIdempotencyStore } from "../../src/idempotency/sqlite-idempotency-store.js";
+import { registerV1Handlers } from "../../src/rpc/method-handlers.js";
+import { MethodRegistry } from "../../src/rpc/method-registry.js";
+import { RpcRouter } from "../../src/rpc/router.js";
 import { ConnectionManager } from "../../src/server/connection-context.js";
 import { createGatewayServer } from "../../src/server/create-gateway-server.js";
 import { DeviceRegistry } from "../../src/state/device-registry.js";
@@ -27,6 +32,8 @@ export interface TestGatewayContext {
 	nonceStore: NonceStore;
 	auditLog: AuditLog;
 	connectionManager: ConnectionManager;
+	rpcRouter: RpcRouter;
+	idempotencyStore: SqliteIdempotencyStore;
 	dataDir: string;
 	address: string;
 	wsUrl: string;
@@ -40,6 +47,7 @@ export interface CreateTestGatewayOptions {
 		deviceId: string;
 		sharedSecret: string;
 		approved: boolean;
+		role?: string;
 	}>;
 }
 
@@ -80,6 +88,8 @@ export async function createTestGateway(
 		nonceWindowMs: 300_000,
 		timestampSkewMs: 30_000,
 		sessionTokenTtlMs: 60_000,
+		idempotencyTtlMs: 86_400_000,
+		idempotencyCleanupIntervalMs: 3_600_000,
 		dataDir,
 		jwtSecret: "gateway-test-jwt-secret",
 		...options.configOverrides,
@@ -96,15 +106,40 @@ export async function createTestGateway(
 		deviceId: DEFAULT_TEST_DEVICE.deviceId,
 		sharedSecret: DEFAULT_TEST_DEVICE.sharedSecret,
 		approved: options.approvedDevice ?? true,
+		role: DEFAULT_TEST_DEVICE.role,
 	});
 
 	for (const device of options.additionalDevices ?? []) {
+		const role: Role =
+			device.role === "admin" ||
+			device.role === "node" ||
+			device.role === "client"
+				? device.role
+				: "client";
+
 		await deviceRegistry.registerDevice({
 			deviceId: device.deviceId,
 			sharedSecret: device.sharedSecret,
 			approved: device.approved,
+			role,
 		});
 	}
+
+	const methodRegistry = new MethodRegistry();
+	registerV1Handlers(methodRegistry, {
+		deviceRegistry,
+		connectionManager,
+		auditLog,
+	});
+
+	const idempotencyStore = new SqliteIdempotencyStore({
+		dbPath: join(dataDir, "homeagent.db"),
+		ttlMs: config.idempotencyTtlMs ?? 86_400_000,
+		cleanupIntervalMs: config.idempotencyCleanupIntervalMs ?? 3_600_000,
+	});
+	idempotencyStore.startCleanupTimer();
+
+	const rpcRouter = new RpcRouter(methodRegistry, idempotencyStore);
 
 	const server = await createGatewayServer({
 		config,
@@ -112,6 +147,8 @@ export async function createTestGateway(
 		nonceStore,
 		auditLog,
 		connectionManager,
+		rpcRouter,
+		idempotencyStore,
 	});
 
 	const address = await server.listen({ host: config.host, port: config.port });
@@ -124,6 +161,8 @@ export async function createTestGateway(
 		nonceStore,
 		auditLog,
 		connectionManager,
+		rpcRouter,
+		idempotencyStore,
 		dataDir,
 		address,
 		wsUrl,
@@ -134,6 +173,7 @@ export async function createTestGateway(
 export async function cleanupTestGateway(
 	ctx: TestGatewayContext,
 ): Promise<void> {
+	ctx.idempotencyStore.close();
 	await ctx.server.close();
 	await rm(ctx.dataDir, { recursive: true, force: true });
 }

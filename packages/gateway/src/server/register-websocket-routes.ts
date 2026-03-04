@@ -18,6 +18,9 @@ import {
 import { AuthError, type AuthErrorCode } from "../auth/errors.js";
 import { validateTimestamp, verifyHmac } from "../auth/hmac-auth.js";
 import { issueSessionToken } from "../auth/session-token.js";
+import type { RpcRouter } from "../rpc/router.js";
+import type { RpcContext } from "../rpc/types.js";
+import type { ConnectionContext } from "./connection-context.js";
 import type { GatewayDependencies } from "./create-gateway-server.js";
 import { handleHeartbeat } from "./heartbeat-handler.js";
 
@@ -36,6 +39,7 @@ const PROTOCOL_ERROR_CODES: Record<AuthErrorCode, number> = {
 	UNKNOWN_DEVICE: 4005,
 	INVALID_TOKEN: 4006,
 	EXPIRED_TOKEN: 4007,
+	REVOKED_DEVICE: 4008,
 };
 
 function sendJson(socket: WebSocket, payload: unknown): void {
@@ -114,12 +118,7 @@ function waitForFirstMessage(socket: WebSocket): Promise<RawData> {
 function attachPostHandshakeHandlers(
 	socket: WebSocket,
 	deps: GatewayDependencies,
-	connectionCtx: {
-		connectionId: string;
-		deviceId: string;
-		sessionToken: string;
-		connectedAt: number;
-	},
+	connectionCtx: ConnectionContext,
 	jwtSecret: string,
 ): void {
 	socket.on("message", (raw) => {
@@ -153,10 +152,24 @@ function attachPostHandshakeHandlers(
 			return;
 		}
 
-		console.debug("[gateway] ignoring unsupported websocket message type", {
+		const rpcContext: RpcContext = {
 			connectionId: connectionCtx.connectionId,
 			deviceId: connectionCtx.deviceId,
-		});
+			role: connectionCtx.role,
+			sessionToken: connectionCtx.sessionToken,
+		};
+		const rpcRouter: RpcRouter = deps.rpcRouter;
+		void rpcRouter.handle(message, rpcContext).then(
+			(response) => {
+				sendJson(socket, response);
+			},
+			(error) => {
+				console.error("[gateway] rpc handler error", {
+					connectionId: connectionCtx.connectionId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			},
+		);
 	});
 
 	socket.once("close", () => {
@@ -232,6 +245,14 @@ async function processHandshake(
 			);
 		}
 
+		if (device.revoked === true) {
+			throw new AuthError(
+				"REVOKED_DEVICE",
+				"Device has been revoked.",
+				message.deviceId,
+			);
+		}
+
 		if (
 			!verifyHmac(
 				message.signature,
@@ -274,7 +295,7 @@ async function processHandshake(
 		const sessionToken = issueSessionToken({
 			deviceId: message.deviceId,
 			connectionId,
-			role: message.role,
+			role: device.role,
 			jwtSecret,
 			ttlMs: deps.config.sessionTokenTtlMs,
 		});
@@ -282,6 +303,7 @@ async function processHandshake(
 		deps.connectionManager.add({
 			connectionId,
 			deviceId: message.deviceId,
+			role: device.role,
 			sessionToken,
 			connectedAt,
 		});
@@ -295,18 +317,19 @@ async function processHandshake(
 		});
 
 		sendJson(socket, connectOk);
-		await deps.auditLog.log(
-			createConnectionEvent(message.deviceId, "connected"),
-		);
 
-		const connectionCtx = {
+		const connectionCtx: ConnectionContext = {
 			connectionId,
 			deviceId: message.deviceId,
+			role: device.role,
 			sessionToken,
 			connectedAt,
 		};
 
 		attachPostHandshakeHandlers(socket, deps, connectionCtx, jwtSecret);
+		await deps.auditLog.log(
+			createConnectionEvent(message.deviceId, "connected"),
+		);
 	} catch (error: unknown) {
 		if (error instanceof AuthError) {
 			sendProtocolError(socket, mapAuthErrorToProtocol(error));

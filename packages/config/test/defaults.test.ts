@@ -49,9 +49,9 @@ describe("DEFAULT_CONFIG", () => {
 		expect(Object.isFrozen(DEFAULT_CONFIG.gateway.frameLimits)).toBe(true);
 		expect(Object.isFrozen(DEFAULT_CONFIG.gateway.session)).toBe(true);
 		expect(Object.isFrozen(DEFAULT_CONFIG.gateway.network)).toBe(true);
-		expect(Object.isFrozen(DEFAULT_CONFIG.gateway.network.originAllowlist)).toBe(
-			true,
-		);
+		expect(
+			Object.isFrozen(DEFAULT_CONFIG.gateway.network.originAllowlist),
+		).toBe(true);
 		expect(Object.isFrozen(DEFAULT_CONFIG.runtime)).toBe(true);
 		expect(Object.isFrozen(DEFAULT_CONFIG.runtime.compaction)).toBe(true);
 		expect(Object.isFrozen(DEFAULT_CONFIG.runtime.execution)).toBe(true);

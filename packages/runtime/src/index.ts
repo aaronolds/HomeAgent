@@ -1,8 +1,8 @@
 export const packageName = "@homeagent/runtime";
 
 export type {
-	RuntimeConfig,
 	RuntimeCompaction,
+	RuntimeConfig,
 	RuntimeExecution,
 } from "@homeagent/config";
 

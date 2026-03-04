@@ -4,6 +4,7 @@ export type AuthErrorCode =
 	| "REPLAYED_NONCE"
 	| "UNAPPROVED_DEVICE"
 	| "UNKNOWN_DEVICE"
+	| "REVOKED_DEVICE"
 	| "INVALID_TOKEN"
 	| "EXPIRED_TOKEN";
 
