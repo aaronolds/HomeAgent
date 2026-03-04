@@ -124,7 +124,14 @@ function createDeviceRevokeHandler(deps: HandlerDependencies): RpcHandler {
 		requireAdmin(context, "device.revoke");
 		const parsed = parseParams("device.revoke", params);
 
-		await deps.deviceRegistry.revokeDevice(parsed.deviceId, parsed.reason);
+		const revoked = await deps.deviceRegistry.revokeDevice(
+			parsed.deviceId,
+			parsed.reason,
+		);
+		if (!revoked) {
+			return { revoked: false };
+		}
+
 		deps.connectionManager.removeByDeviceId(parsed.deviceId);
 		await deps.auditLog.log({
 			timestamp: Date.now(),

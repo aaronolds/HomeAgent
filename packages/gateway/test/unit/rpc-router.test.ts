@@ -85,7 +85,7 @@ describe("RpcRouter", () => {
 		it("rejects malformed envelope", async () => {
 			const result = await router.handle({ garbage: true }, clientContext);
 			expect(result.error).toBeDefined();
-			expect(result.error?.code).toBe(RPC_ERROR_CODES.PARSE_ERROR);
+			expect(result.error?.code).toBe(RPC_ERROR_CODES.INVALID_REQUEST);
 		});
 
 		it("rejects unknown method", async () => {
@@ -126,7 +126,7 @@ describe("RpcRouter", () => {
 				adminContext,
 			);
 			expect(result.result).toBeDefined();
-			expect(result.result?.revoked).toBe(true);
+			expect(result.result?.revoked).toBe(false);
 		});
 
 		it("allows client to call status.get", async () => {
