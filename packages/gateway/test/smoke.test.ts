@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { GatewayConfig } from "../src/index.js";
+import type { GatewayServerConfig } from "../src/index.js";
 import {
 	computeHmac,
 	createDefaultConfig,
@@ -23,7 +23,7 @@ describe("@homeagent/gateway", () => {
 		expect(issueSessionToken).toBeTypeOf("function");
 		expect(verifySessionToken).toBeTypeOf("function");
 
-		const config: GatewayConfig = createDefaultConfig();
+		const config: GatewayServerConfig = createDefaultConfig();
 		expect(config).toBeDefined();
 	});
 });

@@ -1,8 +1,8 @@
-import type { GatewayConfig } from "../config/gateway-config.js";
+import type { GatewayServerConfig } from "../config/gateway-config.js";
 import { loadOrGenerateCertificate } from "./certificate-manager.js";
 
 export async function buildTlsOptions(
-	config: GatewayConfig,
+	config: GatewayServerConfig,
 ): Promise<{ https: { cert: string; key: string } } | null> {
 	if (config.insecure) {
 		return null;

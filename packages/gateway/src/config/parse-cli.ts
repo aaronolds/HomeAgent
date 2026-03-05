@@ -1,4 +1,7 @@
-import { createDefaultConfig, type GatewayConfig } from "./gateway-config.js";
+import {
+	createDefaultConfig,
+	type GatewayServerConfig,
+} from "./gateway-config.js";
 
 function parseIntegerFlag(flagName: string, value: string): number {
 	const parsed = Number.parseInt(value, 10);
@@ -9,7 +12,7 @@ function parseIntegerFlag(flagName: string, value: string): number {
 }
 
 interface ParsedArgs {
-	config: Partial<GatewayConfig> & { portProvided?: boolean };
+	config: Partial<GatewayServerConfig> & { portProvided?: boolean };
 	originAllowlist?: string[] | undefined;
 	strictOrigin?: boolean | undefined;
 	strictCors?: boolean | undefined;
@@ -20,7 +23,7 @@ interface ParsedArgs {
 }
 
 function parseArgs(args: string[]): ParsedArgs {
-	const parsed: Partial<GatewayConfig> & { portProvided?: boolean } = {};
+	const parsed: Partial<GatewayServerConfig> & { portProvided?: boolean } = {};
 	let originAllowlist: string[] | undefined;
 	let strictOrigin: boolean | undefined;
 	let strictCors: boolean | undefined;
@@ -40,7 +43,11 @@ function parseArgs(args: string[]): ParsedArgs {
 		}
 
 		const [rawFlag, inlineValue] = current.split("=", 2);
-		const booleanFlags = new Set(["--insecure", "--no-strict-origin", "--no-strict-cors"]);
+		const booleanFlags = new Set([
+			"--insecure",
+			"--no-strict-origin",
+			"--no-strict-cors",
+		]);
 		const needsValue = !booleanFlags.has(rawFlag!);
 		let value = inlineValue;
 		if (needsValue && value === undefined) {
@@ -206,7 +213,7 @@ function parseArgs(args: string[]): ParsedArgs {
 
 export function parseCli(
 	argv: string[] = process.argv.slice(2),
-): GatewayConfig {
+): GatewayServerConfig {
 	const defaults = createDefaultConfig();
 	const {
 		config: parsed,
@@ -223,7 +230,7 @@ export function parseCli(
 		throw new Error("--cert and --key must be provided together");
 	}
 
-	const merged: GatewayConfig = {
+	const merged: GatewayServerConfig = {
 		...defaults,
 		...parsed,
 		rateLimits: {
