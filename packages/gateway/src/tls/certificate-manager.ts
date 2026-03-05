@@ -2,7 +2,7 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import * as selfsigned from "selfsigned";
 
-import type { GatewayConfig } from "../config/gateway-config.js";
+import type { GatewayServerConfig } from "../config/gateway-config.js";
 
 const CERT_DIRECTORY = "certs";
 const CERT_FILE_NAME = "gateway.crt";
@@ -53,7 +53,7 @@ function getManagedCertificatePaths(dataDir: string): CertificatePaths {
 }
 
 export async function loadOrGenerateCertificate(
-	config: GatewayConfig,
+	config: GatewayServerConfig,
 ): Promise<CertificateResult> {
 	if (config.certPath !== undefined || config.keyPath !== undefined) {
 		if (config.certPath === undefined || config.keyPath === undefined) {

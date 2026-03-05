@@ -9,6 +9,7 @@ import {
 } from "@homeagent/shared";
 
 import type { SqliteIdempotencyStore } from "../idempotency/sqlite-idempotency-store.js";
+import type { SlidingWindowRateLimiter } from "../network/rate-limiter.js";
 import {
 	forbidden,
 	internalError,
@@ -16,6 +17,7 @@ import {
 	methodNotFound,
 	missingIdempotencyKey,
 	RpcError,
+	rateLimited,
 } from "./errors.js";
 import {
 	checkIdempotency,
@@ -30,6 +32,8 @@ export class RpcRouter {
 	public constructor(
 		private readonly methodRegistry: MethodRegistry,
 		private readonly idempotencyStore: SqliteIdempotencyStore | null,
+		private readonly deviceRpcLimiter: SlidingWindowRateLimiter | null = null,
+		private readonly agentRunLimiter: SlidingWindowRateLimiter | null = null,
 	) {}
 
 	/**
@@ -57,7 +61,10 @@ export class RpcRouter {
 			}
 
 			if (error instanceof ProtocolValidationError) {
-				return this.buildErrorResponse("unknown", invalidRequest(error.message));
+				return this.buildErrorResponse(
+					"unknown",
+					invalidRequest(error.message),
+				);
 			}
 
 			return this.buildErrorResponse("unknown", internalError());
@@ -73,6 +80,27 @@ export class RpcRouter {
 			return this.buildErrorResponse(
 				envelope.id,
 				forbidden(context.role, method),
+			);
+		}
+
+		if (
+			this.deviceRpcLimiter !== null &&
+			!this.deviceRpcLimiter.hit(context.deviceId)
+		) {
+			return this.buildErrorResponse(
+				envelope.id,
+				rateLimited("Per-device RPC rate limit exceeded"),
+			);
+		}
+
+		if (
+			method === "agent.run" &&
+			this.agentRunLimiter !== null &&
+			!this.agentRunLimiter.hit(context.deviceId)
+		) {
+			return this.buildErrorResponse(
+				envelope.id,
+				rateLimited("Per-device agent.run rate limit exceeded"),
 			);
 		}
 

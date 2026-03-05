@@ -8,8 +8,9 @@ import type { FastifyInstance } from "fastify";
 import WebSocket from "ws";
 import { AuditLog } from "../../src/audit/audit-log.js";
 import { computeHmac } from "../../src/auth/hmac-auth.js";
-import type { GatewayConfig } from "../../src/config/gateway-config.js";
+import type { GatewayServerConfig } from "../../src/config/gateway-config.js";
 import { SqliteIdempotencyStore } from "../../src/idempotency/sqlite-idempotency-store.js";
+import { SlidingWindowRateLimiter } from "../../src/network/rate-limiter.js";
 import { registerV1Handlers } from "../../src/rpc/method-handlers.js";
 import { MethodRegistry } from "../../src/rpc/method-registry.js";
 import { RpcRouter } from "../../src/rpc/router.js";
@@ -27,7 +28,7 @@ export interface TestDeviceInfo {
 
 export interface TestGatewayContext {
 	server: FastifyInstance;
-	config: GatewayConfig;
+	config: GatewayServerConfig;
 	deviceRegistry: DeviceRegistry;
 	nonceStore: NonceStore;
 	auditLog: AuditLog;
@@ -42,7 +43,7 @@ export interface TestGatewayContext {
 
 export interface CreateTestGatewayOptions {
 	approvedDevice?: boolean;
-	configOverrides?: Partial<GatewayConfig>;
+	configOverrides?: Partial<GatewayServerConfig>;
 	additionalDevices?: Array<{
 		deviceId: string;
 		sharedSecret: string;
@@ -81,7 +82,7 @@ export async function createTestGateway(
 ): Promise<TestGatewayContext> {
 	const dataDir = await mkdtemp(join(tmpdir(), "homeagent-gateway-test-"));
 
-	const config: GatewayConfig = {
+	const config: GatewayServerConfig = {
 		host: "127.0.0.1",
 		port: 0,
 		insecure: true,
@@ -92,6 +93,19 @@ export async function createTestGateway(
 		idempotencyCleanupIntervalMs: 3_600_000,
 		dataDir,
 		jwtSecret: "gateway-test-jwt-secret",
+		rateLimits: {
+			perIpConnectionsPerMinute: 100,
+			perDeviceRpcPerMinute: 100,
+			perDeviceAgentRunPerMinute: 100,
+		},
+		frameLimits: {
+			maxFrameBytes: 1_048_576,
+		},
+		network: {
+			originAllowlist: [],
+			strictOrigin: false,
+			strictCors: false,
+		},
 		...options.configOverrides,
 	};
 
@@ -139,7 +153,25 @@ export async function createTestGateway(
 	});
 	idempotencyStore.startCleanupTimer();
 
-	const rpcRouter = new RpcRouter(methodRegistry, idempotencyStore);
+	const ipRateLimiter = new SlidingWindowRateLimiter(
+		60_000,
+		config.rateLimits.perIpConnectionsPerMinute,
+	);
+	const deviceRpcLimiter = new SlidingWindowRateLimiter(
+		60_000,
+		config.rateLimits.perDeviceRpcPerMinute,
+	);
+	const agentRunLimiter = new SlidingWindowRateLimiter(
+		60_000,
+		config.rateLimits.perDeviceAgentRunPerMinute,
+	);
+
+	const rpcRouter = new RpcRouter(
+		methodRegistry,
+		idempotencyStore,
+		deviceRpcLimiter,
+		agentRunLimiter,
+	);
 
 	const server = await createGatewayServer({
 		config,
@@ -149,6 +181,7 @@ export async function createTestGateway(
 		connectionManager,
 		rpcRouter,
 		idempotencyStore,
+		ipRateLimiter,
 	});
 
 	const address = await server.listen({ host: config.host, port: config.port });

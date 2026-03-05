@@ -3,6 +3,7 @@ import {
 	deviceRevoked,
 	duplicateRequest,
 	forbidden,
+	frameTooLarge,
 	internalError,
 	invalidParams,
 	invalidRequest,
@@ -11,6 +12,7 @@ import {
 	parseError,
 	RPC_ERROR_CODES,
 	RpcError,
+	rateLimited,
 	unauthorized,
 } from "../../src/rpc/errors.js";
 
@@ -80,4 +82,28 @@ describe("RPC Errors", () => {
 			expect(factory()).toBeInstanceOf(Error);
 		});
 	}
+});
+
+describe("rateLimited", () => {
+	it("returns correct code and is retryable", () => {
+		const err = rateLimited();
+		expect(err.code).toBe(RPC_ERROR_CODES.RATE_LIMITED);
+		expect(err.message).toBe("Rate limit exceeded");
+		expect(err.retryable).toBe(true);
+	});
+
+	it("accepts custom message", () => {
+		const err = rateLimited("Custom rate limit message");
+		expect(err.message).toBe("Custom rate limit message");
+	});
+});
+
+describe("frameTooLarge", () => {
+	it("returns correct code and is not retryable", () => {
+		const err = frameTooLarge(2_000_000, 1_048_576);
+		expect(err.code).toBe(RPC_ERROR_CODES.FRAME_TOO_LARGE);
+		expect(err.message).toBe("Frame size 2000000 exceeds maximum 1048576");
+		expect(err.retryable).toBe(false);
+		expect(err.data).toEqual({ size: 2_000_000, maxSize: 1_048_576 });
+	});
 });
