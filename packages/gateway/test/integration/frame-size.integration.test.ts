@@ -6,10 +6,10 @@ import {
 	closeSocket,
 	createConnectMessage,
 	createTestGateway,
+	type TestGatewayContext,
 	waitForSocketClose,
 	waitForSocketMessage,
 	waitForSocketOpen,
-	type TestGatewayContext,
 } from "../helpers/test-gateway.js";
 
 describe("frame size limits", () => {

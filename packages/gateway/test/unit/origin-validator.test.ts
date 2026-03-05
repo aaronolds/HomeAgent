@@ -19,18 +19,26 @@ describe("validateOrigin", () => {
 	});
 
 	it("allows origin on allowlist", () => {
-		expect(validateOrigin("http://localhost:3000", ["http://localhost:3000"], true)).toBe(true);
+		expect(
+			validateOrigin("http://localhost:3000", ["http://localhost:3000"], true),
+		).toBe(true);
 	});
 
 	it("rejects origin not on allowlist", () => {
-		expect(validateOrigin("http://evil.com", ["http://localhost:3000"], true)).toBe(false);
+		expect(
+			validateOrigin("http://evil.com", ["http://localhost:3000"], true),
+		).toBe(false);
 	});
 
 	it("case-insensitive matching", () => {
-		expect(validateOrigin("HTTP://LOCALHOST:3000", ["http://localhost:3000"], true)).toBe(true);
+		expect(
+			validateOrigin("HTTP://LOCALHOST:3000", ["http://localhost:3000"], true),
+		).toBe(true);
 	});
 
 	it("rejects missing origin when allowlist is non-empty even if strictOrigin=false", () => {
-		expect(validateOrigin(undefined, ["http://localhost:3000"], false)).toBe(false);
+		expect(validateOrigin(undefined, ["http://localhost:3000"], false)).toBe(
+			false,
+		);
 	});
 });

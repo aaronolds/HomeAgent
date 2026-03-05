@@ -54,7 +54,7 @@ describe("SlidingWindowRateLimiter", () => {
 	});
 
 	it("evict returns zero when nothing expired", () => {
-		let time = 1000;
+		const time = 1000;
 		const limiter = new SlidingWindowRateLimiter(5000, 2, () => time);
 
 		limiter.hit("key"); // t=1000

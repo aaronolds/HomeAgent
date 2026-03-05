@@ -8,11 +8,11 @@ import type { FastifyInstance } from "fastify";
 import WebSocket from "ws";
 import { AuditLog } from "../../src/audit/audit-log.js";
 import { computeHmac } from "../../src/auth/hmac-auth.js";
-import type { GatewayConfig } from "../../src/config/gateway-config.js";
+import type { GatewayServerConfig } from "../../src/config/gateway-config.js";
 import { SqliteIdempotencyStore } from "../../src/idempotency/sqlite-idempotency-store.js";
+import { SlidingWindowRateLimiter } from "../../src/network/rate-limiter.js";
 import { registerV1Handlers } from "../../src/rpc/method-handlers.js";
 import { MethodRegistry } from "../../src/rpc/method-registry.js";
-import { SlidingWindowRateLimiter } from "../../src/network/rate-limiter.js";
 import { RpcRouter } from "../../src/rpc/router.js";
 import { ConnectionManager } from "../../src/server/connection-context.js";
 import { createGatewayServer } from "../../src/server/create-gateway-server.js";
@@ -28,7 +28,7 @@ export interface TestDeviceInfo {
 
 export interface TestGatewayContext {
 	server: FastifyInstance;
-	config: GatewayConfig;
+	config: GatewayServerConfig;
 	deviceRegistry: DeviceRegistry;
 	nonceStore: NonceStore;
 	auditLog: AuditLog;
@@ -43,7 +43,7 @@ export interface TestGatewayContext {
 
 export interface CreateTestGatewayOptions {
 	approvedDevice?: boolean;
-	configOverrides?: Partial<GatewayConfig>;
+	configOverrides?: Partial<GatewayServerConfig>;
 	additionalDevices?: Array<{
 		deviceId: string;
 		sharedSecret: string;
@@ -82,7 +82,7 @@ export async function createTestGateway(
 ): Promise<TestGatewayContext> {
 	const dataDir = await mkdtemp(join(tmpdir(), "homeagent-gateway-test-"));
 
-	const config: GatewayConfig = {
+	const config: GatewayServerConfig = {
 		host: "127.0.0.1",
 		port: 0,
 		insecure: true,

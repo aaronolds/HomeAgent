@@ -52,9 +52,10 @@ export function checkIdempotency(
 	if (!created) {
 		const raceRecord = store.get(namespacedKey);
 		if (raceRecord?.state === "completed") {
-			const cachedResponse = JSON.parse(
-				raceRecord.response ?? "{}",
-			) as Record<string, unknown>;
+			const cachedResponse = JSON.parse(raceRecord.response ?? "{}") as Record<
+				string,
+				unknown
+			>;
 			return {
 				cached: true,
 				cachedResponse,

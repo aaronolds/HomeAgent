@@ -1,4 +1,4 @@
-export interface GatewayConfig {
+export interface GatewayServerConfig {
 	host: string;
 	port: number;
 	insecure: boolean;
@@ -27,7 +27,7 @@ export interface GatewayConfig {
 	};
 }
 
-export function createDefaultConfig(): GatewayConfig {
+export function createDefaultConfig(): GatewayServerConfig {
 	return {
 		host: "0.0.0.0",
 		port: 8443,

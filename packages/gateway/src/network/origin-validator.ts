@@ -31,5 +31,7 @@ export function validateOrigin(
 
 	// Check against allowlist (case-insensitive)
 	const normalizedOrigin = origin.toLowerCase();
-	return allowlist.some((allowed) => allowed.toLowerCase() === normalizedOrigin);
+	return allowlist.some(
+		(allowed) => allowed.toLowerCase() === normalizedOrigin,
+	);
 }

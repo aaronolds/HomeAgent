@@ -10,9 +10,9 @@ import {
 	methodNotFound,
 	missingIdempotencyKey,
 	parseError,
-	rateLimited,
 	RPC_ERROR_CODES,
 	RpcError,
+	rateLimited,
 	unauthorized,
 } from "../../src/rpc/errors.js";
 

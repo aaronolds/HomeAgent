@@ -16,8 +16,8 @@ import {
 	invalidRequest,
 	methodNotFound,
 	missingIdempotencyKey,
-	rateLimited,
 	RpcError,
+	rateLimited,
 } from "./errors.js";
 import {
 	checkIdempotency,
@@ -61,7 +61,10 @@ export class RpcRouter {
 			}
 
 			if (error instanceof ProtocolValidationError) {
-				return this.buildErrorResponse("unknown", invalidRequest(error.message));
+				return this.buildErrorResponse(
+					"unknown",
+					invalidRequest(error.message),
+				);
 			}
 
 			return this.buildErrorResponse("unknown", internalError());
