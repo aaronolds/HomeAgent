@@ -11,6 +11,9 @@ export interface GatewayServerConfig {
 	idempotencyCleanupIntervalMs: number;
 	dataDir: string;
 	sqlitePath?: string;
+	secretsBackend: "encrypted-file" | "keychain";
+	masterPassphrase?: string;
+	fsyncWrites: boolean;
 	jwtSecret?: string;
 	rateLimits: {
 		perIpConnectionsPerMinute: number;
@@ -38,6 +41,8 @@ export function createDefaultConfig(): GatewayServerConfig {
 		idempotencyTtlMs: 86_400_000,
 		idempotencyCleanupIntervalMs: 3_600_000,
 		dataDir: ".homeagent",
+		secretsBackend: "encrypted-file",
+		fsyncWrites: true,
 		rateLimits: {
 			perIpConnectionsPerMinute: 10,
 			perDeviceRpcPerMinute: 60,

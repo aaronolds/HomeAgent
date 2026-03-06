@@ -6,13 +6,13 @@ import { PROTOCOL_VERSION } from "@homeagent/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AuditLog } from "../../src/audit/audit-log.js";
 import { SqliteIdempotencyStore } from "../../src/idempotency/sqlite-idempotency-store.js";
+import { OperationalStore } from "../../src/persistence/operational-store.js";
 import { RPC_ERROR_CODES } from "../../src/rpc/errors.js";
 import { registerV1Handlers } from "../../src/rpc/method-handlers.js";
 import { MethodRegistry } from "../../src/rpc/method-registry.js";
 import { RpcRouter } from "../../src/rpc/router.js";
 import type { RpcContext } from "../../src/rpc/types.js";
 import { ConnectionManager } from "../../src/server/connection-context.js";
-import { DeviceRegistry } from "../../src/state/device-registry.js";
 
 function makeRequest(
 	method: string,
@@ -64,12 +64,13 @@ describe("RpcRouter", () => {
 		});
 		const registry = new MethodRegistry();
 		const dataDir = tempDir;
-		const deviceRegistry = new DeviceRegistry(dataDir);
-		await deviceRegistry.load();
+		const operationalStore = new OperationalStore({
+			dbPath: join(dataDir, "homeagent.db"),
+		});
 		const connectionManager = new ConnectionManager();
 		const auditLog = new AuditLog(dataDir);
 		registerV1Handlers(registry, {
-			deviceRegistry,
+			operationalStore,
 			connectionManager,
 			auditLog,
 		});

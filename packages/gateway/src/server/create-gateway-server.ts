@@ -10,10 +10,14 @@ import type { GatewayServerConfig } from "../config/gateway-config.js";
 import { SqliteIdempotencyStore } from "../idempotency/sqlite-idempotency-store.js";
 import { validateOrigin } from "../network/origin-validator.js";
 import { SlidingWindowRateLimiter } from "../network/rate-limiter.js";
+import { EncryptedFileSecretStore } from "../persistence/encrypted-file-secret-store.js";
+import { KeychainSecretStore } from "../persistence/keychain-secret-store.js";
+import { migrateDevicesFromJson } from "../persistence/migrate-devices.js";
+import { OperationalStore } from "../persistence/operational-store.js";
+import type { SecretStore } from "../persistence/secret-store.js";
 import { registerV1Handlers } from "../rpc/method-handlers.js";
 import { MethodRegistry } from "../rpc/method-registry.js";
 import { RpcRouter } from "../rpc/router.js";
-import { DeviceRegistry } from "../state/device-registry.js";
 import { NonceStore } from "../state/nonce-store.js";
 import { buildTlsOptions } from "../tls/tls-options.js";
 import { ConnectionManager } from "./connection-context.js";
@@ -21,7 +25,8 @@ import { registerWebSocketRoutes } from "./register-websocket-routes.js";
 
 export interface GatewayDependencies {
 	config: GatewayServerConfig;
-	deviceRegistry: DeviceRegistry;
+	operationalStore: OperationalStore;
+	secretStore: SecretStore | null;
 	nonceStore: NonceStore;
 	auditLog: AuditLog;
 	connectionManager: ConnectionManager;
@@ -90,13 +95,56 @@ export async function startGateway(
 		jwtSecret: config.jwtSecret ?? randomBytes(32).toString("hex"),
 	};
 
-	const deviceRegistry = new DeviceRegistry(effectiveConfig.dataDir);
+	const dbPath =
+		effectiveConfig.sqlitePath ?? join(effectiveConfig.dataDir, "homeagent.db");
+	const operationalStore = new OperationalStore({ dbPath });
+
+	const migrationResult = migrateDevicesFromJson({
+		jsonPath: join(effectiveConfig.dataDir, "devices.json"),
+		store: operationalStore,
+	});
+	if (migrationResult.errors.length > 0) {
+		console.warn("[gateway] device migration errors", migrationResult.errors);
+	}
+
+	const passphrase =
+		effectiveConfig.masterPassphrase ?? process.env.HOMEAGENT_MASTER_PASSPHRASE;
+
+	let secretStore: SecretStore | null = null;
+	if (effectiveConfig.secretsBackend === "keychain") {
+		if (passphrase === undefined) {
+			console.warn(
+				"[gateway] no master passphrase configured — keychain fallback requires a passphrase; secret store disabled",
+			);
+		} else {
+			secretStore = new KeychainSecretStore({
+				fallback: {
+					vaultPath: join(effectiveConfig.dataDir, "secrets.vault"),
+					passphrase,
+				},
+			});
+		}
+	} else {
+		if (passphrase === undefined) {
+			console.warn(
+				"[gateway] no master passphrase configured — secret store disabled",
+			);
+		} else {
+			secretStore = new EncryptedFileSecretStore({
+				vaultPath: join(effectiveConfig.dataDir, "secrets.vault"),
+				passphrase,
+			});
+		}
+	}
+
 	const nonceStore = new NonceStore(effectiveConfig.nonceWindowMs);
-	const auditLog = new AuditLog(effectiveConfig.dataDir);
+	const auditLog = new AuditLog(effectiveConfig.dataDir, {
+		datasync: effectiveConfig.fsyncWrites,
+	});
 	const connectionManager = new ConnectionManager();
 	const methodRegistry = new MethodRegistry();
 	registerV1Handlers(methodRegistry, {
-		deviceRegistry,
+		operationalStore,
 		connectionManager,
 		auditLog,
 	});
@@ -136,11 +184,10 @@ export async function startGateway(
 		agentRunLimiter,
 	);
 
-	await deviceRegistry.load();
-
 	const server = await createGatewayServer({
 		config: effectiveConfig,
-		deviceRegistry,
+		operationalStore,
+		secretStore,
 		nonceStore,
 		auditLog,
 		connectionManager,
@@ -152,6 +199,8 @@ export async function startGateway(
 	server.addHook("onClose", async () => {
 		clearInterval(evictInterval);
 		idempotencyStore.close();
+		operationalStore.close();
+		secretStore?.close();
 	});
 
 	const address = await server.listen({

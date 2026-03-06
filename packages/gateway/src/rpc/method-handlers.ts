@@ -3,14 +3,14 @@ import { randomUUID } from "node:crypto";
 import { MethodSchemas } from "@homeagent/shared";
 
 import type { AuditLog } from "../audit/audit-log.js";
+import type { OperationalStore } from "../persistence/operational-store.js";
 import type { ConnectionManager } from "../server/connection-context.js";
-import type { DeviceRegistry } from "../state/device-registry.js";
 import { forbidden, invalidParams } from "./errors.js";
 import type { MethodRegistry } from "./method-registry.js";
 import type { RpcContext, RpcHandler } from "./types.js";
 
 export interface HandlerDependencies {
-	deviceRegistry: DeviceRegistry;
+	operationalStore: OperationalStore;
 	connectionManager: ConnectionManager;
 	auditLog: AuditLog;
 }
@@ -124,11 +124,8 @@ function createDeviceRevokeHandler(deps: HandlerDependencies): RpcHandler {
 		requireAdmin(context, "device.revoke");
 		const parsed = parseParams("device.revoke", params);
 
-		const revoked = await deps.deviceRegistry.revokeDevice(
-			parsed.deviceId,
-			parsed.reason,
-		);
-		if (!revoked) {
+		const revoked = deps.operationalStore.revokeDevice(parsed.deviceId);
+		if (revoked === undefined) {
 			return { revoked: false };
 		}
 
@@ -136,6 +133,7 @@ function createDeviceRevokeHandler(deps: HandlerDependencies): RpcHandler {
 		await deps.auditLog.log({
 			timestamp: Date.now(),
 			event: "device_revoked",
+			outcome: "success",
 			deviceId: parsed.deviceId,
 			details: {
 				reason: parsed.reason,
@@ -158,6 +156,7 @@ function createPluginDisableHandler(deps: HandlerDependencies): RpcHandler {
 		await deps.auditLog.log({
 			timestamp: Date.now(),
 			event: "plugin_disabled",
+			outcome: "success",
 			details: {
 				pluginId: parsed.pluginId,
 				reason: parsed.reason,
