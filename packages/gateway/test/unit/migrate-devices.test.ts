@@ -117,5 +117,88 @@ describe("migrateDevicesFromJson", () => {
 
 		expect(result.errors.length).toBeGreaterThan(0);
 		expect(result.errors[0]).toContain("dev-1");
+		// Source file must NOT be renamed when there are errors
+		expect(existsSync(jsonPath)).toBe(true);
+		expect(existsSync(`${jsonPath}.migrated`)).toBe(false);
+	});
+
+	it("does not rename source file when a record has an invalid deviceId", () => {
+		const jsonPath = join(tempDir, "devices.json");
+		writeFileSync(
+			jsonPath,
+			JSON.stringify([
+				{ deviceId: 42, sharedSecret: "s1", role: "client", approved: false },
+			]),
+		);
+
+		const result = migrateDevicesFromJson({ jsonPath, store });
+
+		expect(result.migrated).toBe(0);
+		expect(result.errors).toHaveLength(1);
+		expect(result.errors[0]).toContain("deviceId");
+		expect(existsSync(jsonPath)).toBe(true);
+		expect(existsSync(`${jsonPath}.migrated`)).toBe(false);
+	});
+
+	it("does not rename source file when a record has an invalid sharedSecret", () => {
+		const jsonPath = join(tempDir, "devices.json");
+		writeFileSync(
+			jsonPath,
+			JSON.stringify([
+				{
+					deviceId: "dev-x",
+					sharedSecret: null,
+					role: "client",
+					approved: false,
+				},
+			]),
+		);
+
+		const result = migrateDevicesFromJson({ jsonPath, store });
+
+		expect(result.migrated).toBe(0);
+		expect(result.errors).toHaveLength(1);
+		expect(result.errors[0]).toContain("sharedSecret");
+		expect(existsSync(jsonPath)).toBe(true);
+		expect(existsSync(`${jsonPath}.migrated`)).toBe(false);
+	});
+
+	it("does not rename source file when a record has an invalid role", () => {
+		const jsonPath = join(tempDir, "devices.json");
+		writeFileSync(
+			jsonPath,
+			JSON.stringify([
+				{
+					deviceId: "dev-y",
+					sharedSecret: "s1",
+					role: "superuser",
+					approved: false,
+				},
+			]),
+		);
+
+		const result = migrateDevicesFromJson({ jsonPath, store });
+
+		expect(result.migrated).toBe(0);
+		expect(result.errors).toHaveLength(1);
+		expect(result.errors[0]).toContain("role");
+		expect(existsSync(jsonPath)).toBe(true);
+	});
+
+	it("defaults missing role to 'client' and migrates successfully", () => {
+		const jsonPath = join(tempDir, "devices.json");
+		writeFileSync(
+			jsonPath,
+			JSON.stringify([
+				{ deviceId: "dev-z", sharedSecret: "s1", approved: true },
+			]),
+		);
+
+		const result = migrateDevicesFromJson({ jsonPath, store });
+
+		expect(result.migrated).toBe(1);
+		expect(result.errors).toHaveLength(0);
+		expect(store.getDevice("dev-z")?.role).toBe("client");
+		expect(existsSync(`${jsonPath}.migrated`)).toBe(true);
 	});
 });

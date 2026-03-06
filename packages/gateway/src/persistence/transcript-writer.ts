@@ -25,7 +25,7 @@ export interface TranscriptWriterOptions {
 	agentId: string;
 	/** Session ID for path construction */
 	sessionId: string;
-	/** Whether to call fd.datasync() after each write for crash safety. Default: true */
+	/** Whether to call fsyncSync() after each write for crash safety. Default: true */
 	fsync?: boolean;
 	/** Optional callback for error reporting (e.g., to audit log) */
 	onError?: (error: Error) => void;

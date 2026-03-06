@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, renameSync } from "node:fs";
+import { ROLES } from "@homeagent/shared";
 
 import type { OperationalStore } from "./operational-store.js";
 
@@ -59,11 +60,39 @@ export function migrateDevicesFromJson(
 		for (const record of records) {
 			const device = record as Record<string, unknown>;
 			try {
+				// Validate required string fields
+				if (
+					typeof device.deviceId !== "string" ||
+					device.deviceId.length === 0
+				) {
+					errors.push(
+						`Skipping record: 'deviceId' must be a non-empty string (got ${JSON.stringify(device.deviceId)})`,
+					);
+					continue;
+				}
+				if (
+					typeof device.sharedSecret !== "string" ||
+					device.sharedSecret.length === 0
+				) {
+					errors.push(
+						`Skipping record ${device.deviceId}: 'sharedSecret' must be a non-empty string`,
+					);
+					continue;
+				}
+				// Validate role against the allowed set; default to "client"
+				const rawRole = device.role ?? "client";
+				if (!ROLES.includes(rawRole as (typeof ROLES)[number])) {
+					errors.push(
+						`Skipping record ${device.deviceId}: 'role' must be one of ${ROLES.join(", ")} (got ${JSON.stringify(rawRole)})`,
+					);
+					continue;
+				}
 				const input: Parameters<typeof store.registerDevice>[0] = {
-					deviceId: device.deviceId as string,
-					sharedSecret: device.sharedSecret as string,
-					role: (device.role as "admin" | "node" | "client") ?? "client",
-					approved: (device.approved as boolean) ?? false,
+					deviceId: device.deviceId,
+					sharedSecret: device.sharedSecret,
+					role: rawRole as "admin" | "node" | "client",
+					// Treat any truthy value (boolean true or numeric 1 from legacy SQLite exports) as approved
+					approved: Boolean(device.approved),
 				};
 				if (typeof device.name === "string") {
 					input.name = device.name;
@@ -83,8 +112,9 @@ export function migrateDevicesFromJson(
 		}
 	});
 
-	// Only rename if we actually processed something (even with some errors)
-	if (errors.length === 0 || migrated > 0) {
+	// Only rename when all records migrated without errors; keep the source file
+	// when errors occurred so it can be manually remediated and retried.
+	if (errors.length === 0) {
 		renameSync(jsonPath, migratedPath);
 	}
 
