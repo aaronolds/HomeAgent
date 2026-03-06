@@ -203,7 +203,7 @@ describe("gateway websocket connect auth", () => {
 
 	it("rejects revoked device", async () => {
 		const ctx = await createTestGateway();
-		await ctx.deviceRegistry.revokeDevice(ctx.testDevice.deviceId);
+		ctx.operationalStore.revokeDevice(ctx.testDevice.deviceId);
 		const socket = createClient(ctx.wsUrl);
 
 		try {

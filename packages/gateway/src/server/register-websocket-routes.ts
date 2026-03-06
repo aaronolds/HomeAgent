@@ -228,7 +228,7 @@ async function processHandshake(
 			);
 		}
 
-		const device = await deps.deviceRegistry.getDevice(message.deviceId);
+		const device = deps.operationalStore.getDevice(message.deviceId);
 		if (device === undefined) {
 			throw new AuthError(
 				"UNKNOWN_DEVICE",

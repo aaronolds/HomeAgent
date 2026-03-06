@@ -42,13 +42,16 @@ function parseArgs(args: string[]): ParsedArgs {
 			continue;
 		}
 
-		const [rawFlag, inlineValue] = current.split("=", 2);
+		const [rawFlag, inlineValue] = current.split("=", 2) as [
+			string,
+			string | undefined,
+		];
 		const booleanFlags = new Set([
 			"--insecure",
 			"--no-strict-origin",
 			"--no-strict-cors",
 		]);
-		const needsValue = !booleanFlags.has(rawFlag!);
+		const needsValue = !booleanFlags.has(rawFlag);
 		let value = inlineValue;
 		if (needsValue && value === undefined) {
 			const next = args[i + 1];

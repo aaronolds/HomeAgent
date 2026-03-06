@@ -11,12 +11,12 @@ import { computeHmac } from "../../src/auth/hmac-auth.js";
 import type { GatewayServerConfig } from "../../src/config/gateway-config.js";
 import { SqliteIdempotencyStore } from "../../src/idempotency/sqlite-idempotency-store.js";
 import { SlidingWindowRateLimiter } from "../../src/network/rate-limiter.js";
+import { OperationalStore } from "../../src/persistence/operational-store.js";
 import { registerV1Handlers } from "../../src/rpc/method-handlers.js";
 import { MethodRegistry } from "../../src/rpc/method-registry.js";
 import { RpcRouter } from "../../src/rpc/router.js";
 import { ConnectionManager } from "../../src/server/connection-context.js";
 import { createGatewayServer } from "../../src/server/create-gateway-server.js";
-import { DeviceRegistry } from "../../src/state/device-registry.js";
 import { NonceStore } from "../../src/state/nonce-store.js";
 
 export interface TestDeviceInfo {
@@ -29,7 +29,7 @@ export interface TestDeviceInfo {
 export interface TestGatewayContext {
 	server: FastifyInstance;
 	config: GatewayServerConfig;
-	deviceRegistry: DeviceRegistry;
+	operationalStore: OperationalStore;
 	nonceStore: NonceStore;
 	auditLog: AuditLog;
 	connectionManager: ConnectionManager;
@@ -92,6 +92,8 @@ export async function createTestGateway(
 		idempotencyTtlMs: 86_400_000,
 		idempotencyCleanupIntervalMs: 3_600_000,
 		dataDir,
+		secretsBackend: "encrypted-file",
+		fsyncWrites: false,
 		jwtSecret: "gateway-test-jwt-secret",
 		rateLimits: {
 			perIpConnectionsPerMinute: 100,
@@ -109,18 +111,18 @@ export async function createTestGateway(
 		...options.configOverrides,
 	};
 
-	const deviceRegistry = new DeviceRegistry(config.dataDir);
+	const operationalStore = new OperationalStore({
+		dbPath: join(dataDir, "homeagent.db"),
+	});
 	const nonceStore = new NonceStore(config.nonceWindowMs);
 	const auditLog = new AuditLog(config.dataDir);
 	const connectionManager = new ConnectionManager();
 
-	await deviceRegistry.load();
-
-	await deviceRegistry.registerDevice({
+	operationalStore.registerDevice({
 		deviceId: DEFAULT_TEST_DEVICE.deviceId,
 		sharedSecret: DEFAULT_TEST_DEVICE.sharedSecret,
 		approved: options.approvedDevice ?? true,
-		role: DEFAULT_TEST_DEVICE.role,
+		role: DEFAULT_TEST_DEVICE.role as "admin" | "node" | "client",
 	});
 
 	for (const device of options.additionalDevices ?? []) {
@@ -131,7 +133,7 @@ export async function createTestGateway(
 				? device.role
 				: "client";
 
-		await deviceRegistry.registerDevice({
+		operationalStore.registerDevice({
 			deviceId: device.deviceId,
 			sharedSecret: device.sharedSecret,
 			approved: device.approved,
@@ -141,7 +143,7 @@ export async function createTestGateway(
 
 	const methodRegistry = new MethodRegistry();
 	registerV1Handlers(methodRegistry, {
-		deviceRegistry,
+		operationalStore,
 		connectionManager,
 		auditLog,
 	});
@@ -175,7 +177,8 @@ export async function createTestGateway(
 
 	const server = await createGatewayServer({
 		config,
-		deviceRegistry,
+		operationalStore,
+		secretStore: null,
 		nonceStore,
 		auditLog,
 		connectionManager,
@@ -190,7 +193,7 @@ export async function createTestGateway(
 	return {
 		server,
 		config,
-		deviceRegistry,
+		operationalStore,
 		nonceStore,
 		auditLog,
 		connectionManager,
@@ -207,6 +210,7 @@ export async function cleanupTestGateway(
 	ctx: TestGatewayContext,
 ): Promise<void> {
 	ctx.idempotencyStore.close();
+	ctx.operationalStore.close();
 	await ctx.server.close();
 	await rm(ctx.dataDir, { recursive: true, force: true });
 }
