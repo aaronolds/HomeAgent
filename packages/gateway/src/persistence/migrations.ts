@@ -36,14 +36,4 @@ export const MIGRATIONS: Migration[] = [
 			);
 		`,
 	},
-	{
-		version: 3,
-		description: "Create schema_version table",
-		up: `
-			CREATE TABLE IF NOT EXISTS schema_version (
-				version INTEGER PRIMARY KEY,
-				applied_at INTEGER NOT NULL
-			);
-		`,
-	},
 ];
